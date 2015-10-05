@@ -1,0 +1,17 @@
+importFrom(Rcpp, evalCpp)
+importFrom(stats,
+	   dnorm, pnorm, qnorm, rnorm,
+	   dcauchy, pcauchy, qcauchy, rcauchy,
+	   dt, pt, qt, rt,
+	   runif,
+	   integrate, uniroot, optimize)
+
+useDynLib(stablecpp)
+export(
+       "dstable", "dstable.quick",
+       "pstable",
+       "qstable",
+       "rstable",
+       "stable_fit",
+       "stableMode"
+       )
