@@ -59,14 +59,18 @@ require(stablecpp)
 
 alphas=c(.1,.5,1,1.5,1.99,2)
 betas<-c(-1,-.5,0,.5,1)
-pdf(file="stable_fit-ex.pdf",width=9,height=6.5)
 for (alpha in alphas){
   for (beta in betas){
     print(c(alpha,beta))
     set.seed(100)
     xtst<-rstable(10000,alpha,beta)
+    q<-quantile(xtst,p=c(.05,.25,.5,.75,.95))
+    q_kurt<-(q[5]-q[1])/(q[4]-q[2])
+    q_skew<-(q[5]+q[1]-2*q[3])/(q[5]-q[1])
+    q_scale<-q[4]-q[2]
+    q_location<-q[3]
+    input_parameters<-data.frame(alpha=alpha,beta=beta,gamma=1,delta=0,pm=0,two_ll_n=NA,n=10000,method="input",q_kurt,q_skew,q_scale,q_location)
     sf_out<-stable_fit(xtst,type="mle")
-    graph_stable_fit(sf_out,subhead = sprintf("Input: alpha = %g, beta = %g",alpha,beta))
+    print(rbind(input_parameters,sf_out$parameters))
   }
 }
-dev.off()

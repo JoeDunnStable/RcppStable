@@ -23,8 +23,14 @@ double g(double th, g_param* param) {
   if (fabs(M_PI_2 - ((param->alpha > 1)? th :-th)) < 64 * Machine_eps) return 0.;
   double att = param->at0 + param->alpha * th; // = alpha*(theta0 + theta)
   double r = pow(param->cat0 * cos(th) * pow(param->x_m_zet/sin(att),param->alpha),1/(param->alpha-1)) * cos(att - th);
-  if (isnan(r))
-    r=R_PosInf;
+  if (isnan(r) || r<0){
+    if ((param->alpha>1 && fabs(th-M_PI_2)<1e-5) ||(param->alpha<1 && fabs(att)<1e-5))
+      r=0;
+    else if ((param->alpha>1 && fabs(att)<1e-5) ||(param->alpha <1 && fabs(th-M_PI_2)<1e-5))
+      r=R_PosInf;
+    else
+      r=NAN;
+  }
   return r;
 }
 
@@ -151,6 +157,12 @@ public:
            &subdivisions, &lenw, &last, iwork, work);
     if (ier>0) {
       if (ier<6){
+         double endpt[] = {lower,upper};
+         g1(endpt,2,(void *)param);
+         // The min and max of the result given that the integrand is monotonic
+         double r_min=std::min(endpt[0],endpt[1])*(upper-lower);
+         double r_max=std::max(endpt[0],endpt[1])*(upper-lower);
+         result=std::min(std::max(result,r_min),r_max);
          warning(msgs[ier]);
       } else {
         stop(msgs[ier]);
@@ -541,6 +553,11 @@ public:
              &subdivisions, &lenw, &last, iwork, work);
              if (ier>0) {
                if (ier<6){
+                 double endpt[] = {lower, upper};
+                 g2(endpt,2,(void *) param);
+                 double r_min = std::min(endpt[0],endpt[1])*(upper-lower);
+                 double r_max = std::max(endpt[0],endpt[1])*(upper-lower);
+                 result=std::min(std::max(result,r_min),r_max);
                  warning(msgs[ier]);
                } else {
                  stop(msgs[ier]);
@@ -711,7 +728,7 @@ double dPareto(double x, double alpha, double beta, bool log_flag) {
 double sdstable1(double x, double alpha, double beta, int log_flag,
                          double tol, double zeta_tol, int subdivisions, int verbose)
   {
-    Rcout.precision(15);
+    Rcout.precision(20);
     double ret;
   if (alpha != 1) { // 0 < alpha < 2	&  |beta| <= 1 from above
 // General Case

@@ -459,34 +459,42 @@ stable_fit<-function(y,type="q",quick=T,pm=0) {
     alpha0<-alpha
     beta0<-beta
   }
-  qs<-qstable(c(.05,.25,.5,.75,.95),alpha,beta)
-  qs_kurt<-(qs[5]-qs[1])/(qs[4]-qs[2])
-  qs_skew<-(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1])
-  cat(sprintf("Skewness: sample = %g, fitted = %g\n",q_skew, qs_skew))
-  cat(sprintf("Kurtosis: sample = %g, fitted = %g\n",q_kurt, qs_kurt))
   df_out<-data.frame(alpha=alpha,beta=beta)
   df_out$gamma<-(q[4]-q[2])/(qstable(.75,alpha=df_out$alpha,beta=df_out$beta,pm=0)-
                                qstable(.25,alpha=df_out$alpha,beta=df_out$beta,pm=0))
   df_out$delta<-q[3]-qstable(.5,alpha=df_out$alpha,beta=df_out$beta,gamma=df_out$gamma,pm=pm)
   df_out$pm<-pm
   df_out$method<-rep("McCulloch")
+  qs<-with(df_out,qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,gamma=gamma,delta=delta,pm=pm))
   df_out$two_ll_n<--2*ll(df_out$alpha,df_out$beta,df_out$gamma,df_out$delta)/n
   df_out$n<-n
+  df_out$q_kurt<-(qs[5]-qs[1])/(qs[4]-qs[2])
+  df_out$q_skew<-(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1])
+  df_out$q_scale<-qs[4]-qs[2]
+  df_out$q_location<-qs[3]
   if (type=="mle") {
     fit_mle<-stats4::mle(ll,start=df_out[c("alpha","beta","gamma","delta")],
                   lower=c(alpha=.1,beta= (-1+1e-10), gamma=1e-10,delta=-Inf),
                   upper=c(alpha=2,beta=1-1e-10,gamma=Inf,delta=Inf),
                   method="L-BFGS-B")
-    tmp<<-fit_mle
+    alpha=fit_mle@coef[["alpha"]]
+    beta=fit_mle@coef[["beta"]]
+    gamma=fit_mle@coef[["gamma"]]
+    delta=fit_mle@coef[["delta"]]
+    qs<-qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,gamma=gamma,delta=delta)
     df_out<-rbind(df_out,
-                  data.frame(alpha=fit_mle@coef[["alpha"]],
-                             beta=fit_mle@coef[["beta"]],
-                             gamma=fit_mle@coef[["gamma"]],
-                             delta=fit_mle@coef[["delta"]],
+                  data.frame(alpha=alpha,
+                             beta=beta,
+                             gamma=gamma,
+                             delta=delta,
                              two_ll_n=-2*as.double(fit_mle@min)/n,
                              pm=pm,
                              n=n,
-                             method="mle"))
+                             method="mle",
+                             q_kurt=(qs[5]-qs[1])/(qs[4]-qs[2]),
+                             q_skew=(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1]),
+                             q_scale=qs[4]-qs[2],
+                             q_location=qs[3]))
   }
   if (type=="q")
     list(parameters=df_out,fit_mle=NULL)
