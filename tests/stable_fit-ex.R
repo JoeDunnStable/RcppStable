@@ -62,14 +62,18 @@ betas<-c(-1,-.5,0,.5,1)
 for (alpha in alphas){
   for (beta in betas){
     print(c(alpha,beta))
+    n=10000
     set.seed(100)
-    xtst<-rstable(10000,alpha,beta)
+    xtst<-rstable(n,alpha,beta)
     q<-quantile(xtst,p=c(.05,.25,.5,.75,.95))
     q_kurt<-(q[5]-q[1])/(q[4]-q[2])
     q_skew<-(q[5]+q[1]-2*q[3])/(q[5]-q[1])
     q_scale<-q[4]-q[2]
     q_location<-q[3]
-    input_parameters<-data.frame(alpha=alpha,beta=beta,gamma=1,delta=0,pm=0,two_ll_n=NA,n=10000,method="input",q_kurt,q_skew,q_scale,q_location)
+    input_parameters<-data.frame(alpha=alpha,beta=beta,gamma=1,delta=0,pm=0,
+                                 two_ll_n=2*sum(dstable.quick(xtst,alpha,beta,log=T))/n,
+                                 n=n,method="input",q_kurt,q_skew,q_scale,q_location)
+    row.names(input_parameters)<-NULL
     sf_out<-stable_fit(xtst,type="mle")
     print(rbind(input_parameters,sf_out$parameters))
   }

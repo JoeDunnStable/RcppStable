@@ -61,55 +61,6 @@ void g1(double * th, int n, void * ext) {
   }
 }
 
-// Functor passed to toms768 solve to find x such that g(x) == value
-class g_solve {
-private:
-  double value;
-  g_param* param;
-  bool log_flag;
-  int verbose;
-
-public:
-  g_solve(double value_in, g_param* param_in,
-          bool log_flag_in, int verbose_in) {
-    value=value_in;
-    param=param_in;
-    log_flag=log_flag_in;
-    verbose=verbose_in;
-  }
-  double operator()(const double th) {
-    double g_ = g(th,param);
-    g_=fmin(g_,1e100);
-    if (verbose >=3)
-      Rcout << "theta = " << th
-                << ", g(theta) = " << g_ << std::endl;
-    return (log_flag ? log(g_) : g_ ) - value;
-  }
-};
-
-// Functor passed to toms748_solve to find x such that g1(x) == value
-class g1_solve {
-private:
-  double value;
-  g_param *param;
-  int verbose;
-public:
-  g1_solve(double value_in,g_param *param_in, int verbose_in) {
-    value=value_in;
-    param=param_in;
-    verbose=verbose_in;
-  }
-  double operator()(const double th) {
-    double g1_=th;
-    g1(&g1_,1,param);
-    g1_=fmin(g1_,1e100);
-    if (verbose >=3)
-      Rcout << "theta = " << th
-                << ", g1(theta) = " << g1_ << std::endl;
-    return g1_ - value;
-  }
-};
-
 // This class contains everything need to integrate g1 except the endpoints
 // of the interval.  The operator() double(a,b) actually performs the integration
 // using the R version of quadpack, Rdqags, which is exported from the R interface
@@ -162,7 +113,15 @@ public:
          // The min and max of the result given that the integrand is monotonic
          double r_min=std::min(endpt[0],endpt[1])*(upper-lower);
          double r_max=std::max(endpt[0],endpt[1])*(upper-lower);
-         result=std::min(std::max(result,r_min),r_max);
+         if (result < r_min) {
+           result = r_min;
+           abserr = fabs(endpt[1]-endpt[0])*(upper-lower);
+           warning("result was less than indicated by endpoints\n");
+         } else if (result > r_max) {
+           result = r_max;
+           abserr = fabs(endpt[1]-endpt[0])*(upper-lower);
+           warning("result was greater than indicated by endpoints\n");
+         }
          warning(msgs[ier]);
       } else {
         stop(msgs[ier]);
@@ -243,7 +202,7 @@ double fct1(double x, double zeta,
   param.cat0=cat0;
   param.x_m_zet=x_m_zet;
   //' g() is strictly monotone -- Nolan(1997) ["3. Numerical Considerations"]
-//'     alpha >= 1  <==>  g() is falling, ie. from Inf --> 0;  otherwise growing from 0 to +Inf
+  //'     alpha >= 1  <==>  g() is falling, ie. from Inf --> 0;  otherwise growing from 0 to +Inf
   double c2 = (alpha/(M_PI * fabs(a_1) * x_m_zet));
   double g_pi2 = g(M_PI_2,&param);
   double g_mth0 = g(-theta0,&param);
@@ -415,6 +374,8 @@ double fct1(double x, double zeta,
                 << ") = " << c2*(r1+r2+r3+r4)
               << ", abs.err = " << c2*rerr << std::endl;
   }
+  if (rerr > fabs((r1+r2+r3+r4)))
+    return (log_flag) ? R_NegInf : 0;  ///this will cause the use of dPareto.
   if (log_flag)
     return log(c2) + log(r1 + r2 + r3 + r4);
   else ;
@@ -430,12 +391,6 @@ double dstable_smallA(double x, double alpha, double beta, bool log_flag) {
   else
     return exp(r);
 }
-
-typedef struct {
-  double u0;
-  double p2b;
-  double ea;
-} ga1_param;
 
 double ga1(double u, ga1_param* param) {
   double r = u;
@@ -459,33 +414,6 @@ void g2(double*u, int n, void* ext) {
 }
 
 // ------------------------------------------------------------------------------
-
-class ga1_solve {
-private:
-  double value;
-  ga1_param* param;
-  bool log_flag;
-  int verbose;
-
-public:
-  ga1_solve(double value_in, ga1_param* param_in,
-          bool log_flag_in, int verbose_in) {
-    value=value_in;
-    param=param_in;
-    log_flag=log_flag_in;
-    verbose=verbose_in;
-  }
-  double operator()(const double th) {
-    double g_ = ga1(th,param);
-    g_=fmin(g_,1e100);
-    double r = (log_flag ? log(g_) : g_ ) - value;
-    if (verbose >=3)
-      Rcout << "theta = " << th
-                << ", ga1(theta) = " << g_
-                << ", ga1(theta) - value = " << r << std::endl;
-    return r;
-  }
-};
 
 // Functor passed to toms748_solve to find x such that g1(x) == value
 class g2_solve {
@@ -671,26 +599,33 @@ double fct2(double x, double beta, bool log_flag,
   }
   Int_g2 int_g2(&param, dbltol, subdivisions, verbose);
   double r1, r2, r3, r4;
+  double rerr=0;
   if (do1) {
     r1=int_g2(-1,u1);
+    rerr+=int_g2.abserr;
     r2=int_g2(u1,u2);
+    rerr+=int_g2.abserr;
   }
   else {
     r1=0;
     r2=int_g2(-1,u2);
+    rerr+=int_g2.abserr;
   }
   if (do4){
     r3=int_g2(u2,u3);
+    rerr+=int_g2.abserr;
     r4=int_g2(u3,1);
+    rerr+=int_g2.abserr;
   }
   else{
     r3=int_g2(u2,1);
+    rerr+=int_g2.abserr;
     r4=0;
   }
   if(verbose) {
     double cc = M_PI_2*fabs(i2b);
-    Rprintf(".fct2(%.11g, %.6g,..): c*sum(r1+r2+r3+r4)= %.11g*(%6.4g + %6.4g + %6.4g + %6.4g)= %g\n",
-                    x,beta, cc, r1, r2, r3, r4, cc*(r1+r2+r3+r4));
+    Rprintf(".fct2(%g, %g,..): c*sum(r1+r2+r3+r4)= %g*(%g + %g + %g + %g)= %g\n with abs.err = %g\n",
+                    x,beta, cc, r1, r2, r3, r4, cc*(r1+r2+r3+r4), cc*rerr);
   }
   if(log_flag)
     return log(M_PI_2) + log(fabs(i2b)) + log(r1 + r2 + r3 + r4);
@@ -729,6 +664,7 @@ double sdstable1(double x, double alpha, double beta, int log_flag,
                          double tol, double zeta_tol, int subdivisions, int verbose)
   {
     Rcout.precision(20);
+    Rcout.setf(std::ios::scientific, std::ios::floatfield);
     double ret;
   if (alpha != 1) { // 0 < alpha < 2	&  |beta| <= 1 from above
 // General Case

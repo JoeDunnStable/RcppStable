@@ -15,6 +15,92 @@ public:
 
 double g(double th, g_param* param);
 
+// Functor passed to toms768 solve to find x such that g(x) == value
+class g_solve {
+private:
+  double value;
+  g_param* param;
+  bool log_flag;
+  int verbose;
+
+public:
+  g_solve(double value_in, g_param* param_in,
+          bool log_flag_in, int verbose_in) {
+    value=value_in;
+    param=param_in;
+    log_flag=log_flag_in;
+    verbose=verbose_in;
+  }
+  double operator()(const double th) {
+    double g_ = g(th,param);
+    g_=fmin(g_,1e100);
+    if (verbose >=3)
+      Rcout << "theta = " << th
+            << ", g(theta) = " << g_ << std::endl;
+      return (log_flag ? log(g_) : g_ ) - value;
+  }
+};
+
+void g1(double * th, int n, void * ext) ;
+
+// Functor passed to toms748_solve to find x such that g1(x) == value
+class g1_solve {
+private:
+  double value;
+  g_param *param;
+  int verbose;
+public:
+  g1_solve(double value_in,g_param *param_in, int verbose_in) {
+    value=value_in;
+    param=param_in;
+    verbose=verbose_in;
+  }
+  double operator()(const double th) {
+    double g1_=th;
+    g1(&g1_,1,param);
+    g1_=fmin(g1_,1e100);
+    if (verbose >=3)
+      Rcout << "theta = " << th
+            << ", g1(theta) = " << g1_ << std::endl;
+      return g1_ - value;
+  }
+};
+
+typedef struct {
+  double u0;
+  double p2b;
+  double ea;
+} ga1_param;
+
+double ga1(double u, ga1_param* param);
+
+class ga1_solve {
+private:
+  double value;
+  ga1_param* param;
+  bool log_flag;
+  int verbose;
+
+public:
+  ga1_solve(double value_in, ga1_param* param_in,
+            bool log_flag_in, int verbose_in) {
+    value=value_in;
+    param=param_in;
+    log_flag=log_flag_in;
+    verbose=verbose_in;
+  }
+  double operator()(const double th) {
+    double g_ = ga1(th,param);
+    g_=fmin(g_,1e100);
+    double r = (log_flag ? log(g_) : g_ ) - value;
+    if (verbose >=3)
+      Rcout << "theta = " << th
+            << ", ga1(theta) = " << g_
+            << ", ga1(theta) - value = " << r << std::endl;
+      return r;
+  }
+};
+
 /* These are the ancillary functions used by the R function dstable */
 double fct1(double x, double zeta,
                    double alpha, double beta, double theta0,

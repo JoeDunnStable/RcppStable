@@ -330,52 +330,42 @@ dstable.quick<-function(x,alpha,beta,gamma=1,delta=0,pm=0,log=F,
       sel_exact <- sel_exact | sel_high
       df_knot<<-data.frame()
     } else {
-      x_high_cap<-max(x[sel_high])
-      x_high_floor<-min(x[sel_high])
-      pt_high_cap<-pt(x_high_cap,alpha)
-      pt_high_floor<-pt(x_high_floor,alpha)
-      if (pt_high_cap==pt_high_floor)
-        loglik[sel_high]<-dstable(x_high_floor,alpha,beta,log=T)
-      else {
-        pt_knot_high<-seq(from=pt_high_floor, to=pt_high_cap, length.out=85)
-        x_knot_high<-c(x_high_floor,
-                       qt(pt_knot_high[c(-1,-85)],alpha),
-                       x_high_cap)
-        y_knot_high<-dstable(x_knot_high,alpha,beta,log=T) - dt(x_knot_high,alpha,log=T)
-        sel_high_finite<-is.finite(y_knot_high)
-        pt_knot_high<-pt_knot_high[sel_high_finite]
-        x_knot_high<-x_knot_high[sel_high_finite]
-        y_knot_high<-y_knot_high[sel_high_finite]
-        df_knot<<-data.frame(x_knot=x_knot_high,
-                             pt_knot=pt_knot_high,
-                             y_knot=y_knot_high)
-        loglik[sel_high]<-cubic_spline(pt(x[sel_high],alpha),pt_knot_high,y_knot_high,F,c(0,0))+dt(x[sel_high],alpha,log=T)
-      }
+      x_high_break1<-x_mode+1
+      x_high_break2<-x_mode+10
+      x_high_inner<-c(seq(x_mode+.1,x_high_break1,length.out=30),
+                      seq(x_high_break1,x_high_break2,length.out=50)[-1])
+      pt_high_outer<-seq(pt(x_high_break2,alpha),to=1-.000001,length.out=10)[-1]
+      pt_knot_high<-c(pt(x_high_inner,alpha),pt_high_outer)
+      x_knot_high<-c(x_high_inner,qt(pt_high_outer,alpha))
+      y_knot_high<-dstable(x_knot_high,alpha,beta,log=T) - dt(x_knot_high,alpha,log=T)
+      sel_high_finite<-is.finite(y_knot_high)
+      pt_knot_high<-pt_knot_high[sel_high_finite]
+      x_knot_high<-x_knot_high[sel_high_finite]
+      y_knot_high<-y_knot_high[sel_high_finite]
+      df_knot<<-data.frame(x_knot=x_knot_high,
+                           pt_knot=pt_knot_high,
+                           y_knot=y_knot_high)
+      loglik[sel_high]<-cubic_spline(pt(x[sel_high],alpha),pt_knot_high,y_knot_high,F,c(0,0))+dt(x[sel_high],alpha,log=T)
     }
     if (sum(sel_low)<85) {
       sel_exact <- sel_exact | sel_low
     } else {
-      x_low_cap<-max(x[sel_low])
-      x_low_floor<-min(x[sel_low])
-      pt_low_cap<-pt(x_low_cap,alpha)
-      pt_low_floor<-pt(x_low_floor,alpha)
-      if (pt_low_cap==pt_low_floor)
-        loglik[sel_low]<-dstable(x_low_cap,alpha,beta,log=T)
-      else {
-        pt_knot_low<-seq(from=pt_low_floor, to=pt_low_cap, length.out=85)
-        x_knot_low<-c(x_low_floor,
-                       qt(pt_knot_low[c(-1,-85)],alpha),
-                       x_low_cap)
-        y_knot_low<-dstable(x_knot_low,alpha,beta,log=T) - dt(x_knot_low,alpha,log=T)
-        sel_low_finite<-is.finite(y_knot_low)
-        pt_knot_low<-pt_knot_low[sel_low_finite]
-        x_knot_low<-x_knot_low[sel_low_finite]
-        y_knot_low<-y_knot_low[sel_low_finite]
-        df_knot<<-rbind(data.frame(x_knot=x_knot_low,
-                             pt_knot=pt_knot_low,
-                             y_knot=y_knot_low),df_knot)
-        loglik[sel_low]<-cubic_spline(pt(x[sel_low],alpha),pt_knot_low,y_knot_low,F,c(0,0))+dt(x[sel_low],alpha,log=T)
-      }
+      x_low_break2<-x_mode-10
+      x_low_break1<-x_mode-1
+      x_low_inner=c(seq(x_low_break2,x_low_break1,length.out=50),
+                  seq(x_low_break1, x_mode-.1,length.out=30)[-1])
+      pt_low_outer=seq(0.000001,to=pt(x_low_break2,alpha),length.out=10)[-10]
+      pt_knot_low<-c(pt_low_outer,pt(x_low_inner,alpha))
+      x_knot_low<-c(qt(pt_low_outer,alpha),x_low_inner)
+      y_knot_low<-dstable(x_knot_low,alpha,beta,log=T) - dt(x_knot_low,alpha,log=T)
+      sel_low_finite<-is.finite(y_knot_low)
+      pt_knot_low<-pt_knot_low[sel_low_finite]
+      x_knot_low<-x_knot_low[sel_low_finite]
+      y_knot_low<-y_knot_low[sel_low_finite]
+      df_knot<<-rbind(data.frame(x_knot=x_knot_low,
+                           pt_knot=pt_knot_low,
+                           y_knot=y_knot_low),df_knot)
+      loglik[sel_low]<-cubic_spline(pt(x[sel_low],alpha),pt_knot_low,y_knot_low,F,c(0,0))+dt(x[sel_low],alpha,log=T)
     }
 
     loglik[is.na(loglik)]<--Inf

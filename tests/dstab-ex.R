@@ -1,9 +1,10 @@
 require("stablecpp")
+require("ggplot2")
+require("plyr")
 dPareto <- stablecpp:::dPareto
 
 source(system.file("test-tools-1.R", package = "Matrix"), keep.source=interactive())
 					#-> identical3(), showProc.time(),...
-(doExtras <- stablecpp:::doExtras())
 if(!require("sfsmisc")) eaxis <- axis # use sfsmisc::eaxis if available
 
 stopifnot(0 < print(dstable(4000., alpha=1.00001, beta=0.6)))
@@ -12,7 +13,7 @@ stopifnot(0 < print(dstable(4000., alpha=1.00001, beta=0.6)))
 
 pdf("dstab-ex.pdf")
 
-x <- 2^seq(0, 20, length= if(doExtras) 200 else 64)
+x <- 2^seq(0, 20, length= 200)
 ## Regression check for alpha=2: <==> *norm() :
 x. <- x/1024
 fx <- dstable(x., alpha = 2, beta = 0, gamma = 1.1, delta=2, pm=2)
@@ -24,19 +25,23 @@ stopifnot(
 
 fx <- dstable(x, alpha = 1.0001, beta = 0.6)
 
-plot(x,fx, log="x", type="l")# looks good
-plot(x,fx, log="xy", type="l")# --- perfect now
+qplot(x,fx, log="x", geom="line",
+      main = expression(dstable(x, alpha == 1.0001, beta == 0.6)))# looks good
+qplot(x,fx, log="xy", geom="line",
+      main = expression(dstable(x, alpha == 1.0001, beta == 0.6)))# --- perfect now
 stopifnot((dlx <- diff(log(fx))) < 0, # decreasing
       { dl <- dlx[x[-1] > 1000] # the negative slope:
-	relErr(if(doExtras) -0.13934 else -0.44016, dl) < 4e-4},
+	relErr(-0.13934, dl) < 4e-4},
 	  diff(dl) > -1e-6)#  > 0 "in theory"; > -6e-7, ok on 64-bit Linux
 
-nc <- if(doExtras) 512 else 101 # number of points for curve()
+nc <- 512 # number of points for curve()
 
 zeta <- function(alpha,beta) if(alpha==1) 0 else -beta*tan(pi/2*alpha)
 
 ## negative beta:
-cx <- curve(dstable(x, 0.75, -.5), -.5, 1.5, n=nc)# ok, now
+x=seq(-.5,1.5,length.out=nc)
+qplot(x=x,y=dstable(x,.75,-.5),ylab="f(x)",main=expression(dstable(x, alpha == .75, beta == -.5)),geom="line")
+## cx <- curve(dstable(x, 0.75, -.5), -.5, 1.5, n=nc)# ok, now
 m <- stableMode(0.75, -.5, tol=1e-14)
 stopifnot(all.equal(m, 0.35810298366, tol = 1e-7),
 	  all.equal(dstable(m, 0.75, -.5), 0.3554664043, tol=1e-6))
@@ -49,8 +54,9 @@ showProc.time()
 ## symmetric (beta = 0)
 (x0 <- (-16:16)/256)
 fx0 <- dstable(x0, alpha = 0.1, beta=0, gamma = 1e6)
-plot(x0, fx0, type = "o",
-     main = expression(f(x, alpha== 0.1, beta == 0, gamma == 10^6)))
+qplot(x=x0, y=fx0, geom=c("line"),
+     main = expression(f(x, alpha== 0.1, beta == 0, gamma == 10^6)))+
+  geom_point(shape="o",size=5)
 stopifnot(all.equal(fx0[17],1.15508291498374),
 	  all.equal(fx0[ 1],0.02910420736536),
 	  all.equal(range(diff(fx0[1:8])),
@@ -58,27 +64,32 @@ stopifnot(all.equal(fx0[17],1.15508291498374),
 	  )
 
 ## beta > 0
-r3 <- curve(dstable(x, alpha = 0.3, beta = 0.5, tol=1e-7),
-	    -1, 1)
+x<-seq(-1,1,length.out=nc)
+qplot(x=x,y=dstable(x, alpha = 0.3, beta = 0.5, tol=1e-7),ylab="f(x)",
+            main=expression(dstable(x, alpha== 0.3, beta  == 0.5, tol == 10^-7)),geom="line")
 m3 <- stableMode(0.3, 0.5, tol=1e-14)# still with 3 warnings
 stopifnot(all.equal(m3, -0.2505743952946, tol = 1e-10))
 ## zoom into the above
-r3. <- curve(dstable(x, alpha = 0.3, beta = 0.5, tol=1e-7),
-	    -.27, -.22)
-abline(v = m3, col="gray40", lty=2)
+x<-seq(-.27, -.22, length.out=nc)
+qplot(x=x,y=dstable(x, alpha = 0.3, beta = 0.5, tol=1e-7), ylab="f(x)",
+      main=expression(dstable(x, alpha== 0.3, beta  == 0.5, tol == 10^-7)),geom="line")+
+    geom_vline(aes(xintercept = m3), color="green", linetype=2, size=1)
 
-r1 <- curve(dstable(x, alpha = 0.1, beta = 0.5, tol=1e-7),
-	    -.4, .2, ylim = c(0, 20), n = nc)
-m1 <- stableMode(0.1, 0.5, tol=1e-15)
-abline(v=m1, h=0, col="gray40", lty=2)
+x<-seq(-.4,.2,length.out=nc)
+y<-dstable(x, alpha = 0.1, beta = 0.5, tol=1e-7)
+m1<-stableMode(.1,.5,tol=1e-15)
+qplot(x=x,y=y,geom="line",
+      main=expression(dstable(x, alpha == 0.1, beta == 0.5, tol == 10^-7)),
+      ylab = "f(x)", ylim = c(0, 25))+
+  geom_vline(aes(xintercept=m1),color="green",linetype=2,size=1)+
+  geom_hline(aes(yintercept=0), color="red", linetype=2,size=1)
 stopifnot(all.equal(m1, -0.079193, tol=1e-5)) # -0.079193188, was -0.079192219, and -0.0791921758
-title(main = expression(f(x, alpha== 0.1, beta == 0.5)))
 ## check mode *and* unimodality
-i. <- r1$x > m1
+i. <- x > m1
 stopifnot(## decreasing to the right:
-	  diff(r1$y[ i.]) < 0,
+	  diff(y[ i.]) < 0,
 	  ## increasing on the left:
-	  diff(r1$y[!i.]) > 0)
+	  diff(y[!i.]) > 0)
 
 ## Now *really* small alpha --> 0:
 ##     --------------------------
@@ -95,51 +106,41 @@ if(require("FMStable")) {
 
 ## These now "work": .... well with integration warnings !!
 
-pdstab.alpha <- function(x, beta, alphas = 2^-(40:2),
-                         type = "o", add=FALSE, log = "xy", ...)
+pdstab.alpha <- function(x, betas, alphas = 2^-(40:2),title, ...)
 {
-    stopifnot(is.numeric(x), length(x) == 1, length(beta) == 1,
-              is.numeric(beta), -1 <= beta, beta <= 1,
-              is.numeric(alphas), 0 <= alphas, alphas <= 2,
-              is.logical(add))
+    stopifnot(is.numeric(x),
+              is.numeric(betas), -1 <= betas, betas <= 1,
+              is.numeric(alphas), 0 <= alphas, alphas <= 2)
     if(is.unsorted(alphas)) alphas <- sort(alphas)
-    dst.alp <- vapply(alphas, function(aaa)
-                    dstable(x, aaa, beta = beta, pm = 0), 1.) ## with warnings
-    if(add)
-        lines(alphas, dst.alp, type=type, ...)
-    else {
-        plot(alphas, dst.alp, type=type, log=log, axes=FALSE,
-             xlab = quote(alpha),
-             ylab = bquote(f(x == .(x), alpha)),
-             main = bquote(dstable(x == .(x), alpha, beta == .(beta), pm == 0)
-             ~~~"for (very) small" ~ alpha))
-        if(!require("sfsmisc")) eaxis <- axis # use sfsmisc::eaxis if available
-        eaxis(1); eaxis(2)
+    if(is.unsorted(beta)) betas<-sort(betas)
+    one_ab<-function(df){
+      data.frame(x=x,density=dstable(x, alpha=df$alpha, beta = df$beta, pm = 0))
     }
-    invisible(cbind(alphas, dstable = dst.alp))
+    df<-expand.grid(alpha=alphas,beta=betas)
+    df_out<-ddply(df,.(alpha,beta),one_ab)
+    qplot(x=alpha,y=density,data=df_out,color=as.factor(beta),
+             linetype=as.factor(x), geom="line",log="xy",
+             xlab = quote(alpha),
+             ylab = expression(f(x, alpha)),
+             main = title)+
+      scale_color_discrete(guide_legend(title="beta"))+
+      scale_linetype_discrete(guide_legend(title="x"))
 }
 
 ## vary beta,  keep x :
-pdstab.alpha(x = -1, beta = 0.1)
-if(doExtras) {
-pdstab.alpha(x = -1, beta = 0.3, add=TRUE, col=2, type="l")
-pdstab.alpha(x = -1, beta = 0.5, add=TRUE, col=3, type="l")
-pdstab.alpha(x = -1, beta = 0.7, add=TRUE, col=4, type="l")
-pdstab.alpha(x = -1, beta = 0.9, add=TRUE, col=5, type="l")
-
+pdstab.alpha(x = -1, betas = c(0.1,.3,.5,.7,.9),
+             title=expression(dstable(x == -1, alpha, beta, pm == 0)))
 ## vary x,  keep beta
-pdstab.alpha(x =  -1, beta = 0.3)
-pdstab.alpha(x =  +1, beta = 0.3, add=TRUE, col=2, type="l")
-pdstab.alpha(x =  +5, beta = 0.3, add=TRUE, col=3, type="l")
-pdstab.alpha(x = +50, beta = 0.3, add=TRUE, col=4, type="l")
-pdstab.alpha(x = -10, beta = 0.3, add=TRUE, col=5, type="l")
-}
+pdstab.alpha(x =  c(-1,+1,+5,+50,-10), beta = 0.3,
+             title=expression(dstable(x, beta == .3, alpha, pm == 0)))
+
 ## Plots suggest a simple formula
 ##  log(f(x, alpha, beta))=  c(x,beta) + log(alpha)
 ##      f(x, alpha, beta) =  C(x,beta) * (alpha)   -- ???
 
 ## for normal alpha, it looks different {which is reassuring!}
-pdstab.alpha(x = -1, beta = 0.3, alphas = seq(1/128, 2, length=100))
+pdstab.alpha(x = -1, betas = 0.3, alphas = seq(1/128, 2, length=100),
+             title=expression(dstable(x == -1, alpha, beta, pm == 0)))
 
 ## Show the formula, we derived:
 ## f(x, \alpha, \beta) ~  \alpha * \frac{1 + \beta}{2e \abs{x + \pi/2 \alpha\beta}}
@@ -162,9 +163,9 @@ set.seed(17)
 
 alpha <- 1e-15 ## must be larger than cutoff in .fct1() in ../R/dpqr-stable.R :
 stopifnot(alpha > stablecpp:::.alpha.small.dstable)
-for(beta in runif(if(doExtras) 20 else 2, -1, 1)) {
+for(beta in runif(20, -1, 1)) {
  cat(sprintf("beta =%10g: ", beta))
- for(N in 1:(if(doExtras) 10 else 1)) {
+ for(N in 1:10) {
      x <- 10*rnorm(100); cat(".")
      stopifnot(all.equal(dstable (x, alpha, beta),
                          dst.smlA(x, alpha, beta), tol = 1e-13))
@@ -172,12 +173,18 @@ for(beta in runif(if(doExtras) 20 else 2, -1, 1)) {
 }
 
 
-curve( dstable (x, alpha=1e-10, beta=.8, log=TRUE) , -10, 10)
-curve( dst.smlA(x, alpha=1e-10, beta=.8, log=TRUE), add=TRUE, col=2)
+x=seq(-10,10,length.out=101)
+df<-rbind(data.frame(x=x,y=dstable (x, alpha=1e-10, beta=.8, log=TRUE),type=rep("dstable",101)),
+          data.frame(x=x,y=dst.smlA(x, alpha=1e-10, beta=.8, log=TRUE),type=rep("dst.smlA",101)))
+qplot(x=x,y=y,data=df,color=type,geom="line",
+          main=expression(f(x, alpha == 10^-10, beta == .8)))
 
 ## "same" picture (self-similar !)
-curve( dstable (x, alpha=1e-10, beta=.8, log=TRUE), -1, 1)
-curve( dst.smlA(x, alpha=1e-10, beta=.8, log=TRUE), add=TRUE, col=2)
+x<-seq(-1,1,length.out=101)
+df<-rbind(data.frame(x=x,y=dstable (x, alpha=1e-10, beta=.8, log=TRUE),type=rep("dstable",101)),
+          data.frame(x=x,y=dst.smlA(x, alpha=1e-10, beta=.8, log=TRUE),type=rep("dst.smlA",101)))
+qplot(x=x,y=y,data=df,color=type,geom="line",
+      main=expression(f(x, alpha == 10^-10, beta == .8)))
 
 
 
@@ -191,18 +198,23 @@ curve( dst.smlA(x, alpha=1e-10, beta=.8, log=TRUE), add=TRUE, col=2)
 ##
 ## clear inaccuracy / bug --- maybe *seems* curable
 ##
-curve(dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE), -40, 10)
+x<-seq(-40,40,length.out=101)
+qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE),geom="line",
+      ylab="y",main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == TRUE)))
 ##            ------
 ## --> warnings both from uniroot ("-Inf") and .integrate2()
 ## about equivalent to
-curve(dstable(x, alpha= 0.1, beta=1, pm=1, log=TRUE), 1e-15, 4e4,
-      log="x", xaxt="n"); eaxis(1)
+x<-exp(seq(log(1e-15),log(4e4),length.out=1001))
+qplot(x=x,y=dstable(x, alpha= 0.1, beta=1, pm=1, log=TRUE), geom="line",log="x",
+      main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == TRUE)))
 ## If we decrease  zeta.tol "to 0", we get better here:
-curve(dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE, zeta.tol=1e-100), -40, 20)
+x<-seq(-40,20,length.out=101)
+qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE, zeta.tol=1e-100), geom="line",
+      main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == T, zeta.tol == 10^-100)))
 ## or here, ... but still not good enough
-curve(dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE, zeta.tol=1e-200), -45, 30)
-
-
+x<-seq(-45,30,length.out=101)
+qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE, zeta.tol=1e-200), geom="line",
+      main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == T, zeta.tol == 10^-200)))
 
 showProc.time()
 
@@ -218,29 +230,41 @@ stopifnot(f1 > 0, f2 > 0)
 ## these all work (luck):
 zet <- zeta(alpha= 1.00001, beta= -.8)# -50929.58
 ## here, we must have larger zeta.tol: = 5e-5 is fine; now using "automatic" default
-r4 <- curve(dstable(zet+x, alpha= 1.00001, beta= -.8), -3, 7,
-	    xlab = expression(zeta(alpha,beta) - x),
-	    ylim=c(2.1, 2.3)*1e-10, n = nc)
-cc <- "pink3"
-abline(v=0, col=cc)
+x<-seq(-3,7,length.out=nc)
+df<-rbind(data.frame(x=x,y=dstable(zet+x, alpha= 1.00001, beta= -.8),fnct="dstable"),
+          data.frame(x=x,y=dPareto(zet+x, alpha= 1.00001, beta= -.8),fnct="dPareto"))
 z.txt <- bquote(paste(x == zeta(.), phantom() == .(signif(zet,6))))
-mtext(z.txt, at=0, line = -1, adj = -.1, padj=.2, col=cc)
+qplot(x=x,y=y, geom="line",data=df,color=fnct,
+      main=bquote(dstable(zeta + x, alpha == 1.00001, beta == -.8)),
+	    xlab = expression(x - zeta(alpha,beta)),
+	    ylim=c(2.1, 2.3)*1e-10) +
+      geom_vline(aes(xintercept=0), color="pink")+
+      geom_text(aes(x=0,y=2.30*1e-10,label=deparse(z.txt)), alpha=1,parse=T,hjust=0, color="pink")
 ## no longer much noise (thanks to zeta.tol = 1e-5):
-curve(dPareto(zet+x, alpha= 1.00001, beta= -.8), add=TRUE, col=2)
-stopifnot({ rr <- range(r4$y)
+stopifnot({ rr <- range(df$y)
 	    2.1e-10 < rr & rr < 2.3e-10 })
 
 showProc.time()
 
 ### ---- alpha == 1 ---------
-curve(dstable(x, alpha = 1, beta = 0.3), -20, 20, log="y", n=nc)
-curve(dstable(x, alpha = 1, beta = 0.3, log=TRUE), -200, 160, n=nc)
+x<-seq(-20,20,length.out=nc)
+qplot(x=x,y=dstable(x, alpha = 1, beta = 0.3), geom="line", log="y",
+      main=bquote(dstable(x, alpha == 1, beta == 0.3)),ylab="f(x)")
 
-curve(dPareto(x, alpha = 1, beta = 0.3, log=TRUE), add=TRUE, col=4)
-## "works", but discontinuous --- FIXME
+x<-seq(-200, 160, length.out=nc)
+df<-rbind(data.frame(x=x,y=dstable(x, alpha = 1, beta = 0.3, log=TRUE),fnct=rep("dstable",nc)),
+          data.frame(x=x,y=dPareto(x, alpha = 1, beta = 0.3, log=TRUE),fnct=rep("dPareto",nc)))
+qplot(x=x,y=y,data=df,color=fnct, geom="line",
+      main=bquote(dstable(x, alpha == 1, beta == 0.3, log == T)),
+      ylab="f(x)")
+## was discontinuous but no longer
 ## ditto:
-curve(dstable(x, alpha=1, beta= 0.1, log=TRUE), -70,80, col=2)
-curve(dPareto(x, alpha=1, beta= 0.1, log=TRUE), add=TRUE)
+x<seq(-70,80,length.out=nc)
+df<-rbind(data.frame(x=x,y=dstable(x, alpha=1, beta= 0.1, log=TRUE),fnct="dstable"),
+          data.frame(x=x,y=dPareto(x, alpha=1, beta= 0.1, log=TRUE),fnct="dPareto"))
+qplot(x=x, y=y, data=df, color=fnct, geom="line",
+      main=bquote(dstable(x, alpha == 1, beta == 0.1, log == T)),
+      ylab="f(x)")
 
 showProc.time()
 
@@ -265,32 +289,30 @@ d <- dstable(xLrg, alpha = 1.8,	  beta = 0.3 ); chkUnimodal(d)
 d <- dstable(xLrg, alpha = 1.01,  beta = 0.3 ); chkUnimodal(d) # (was slow!)
 ## look at the problem:
 dstCurve <- function(alpha, beta, log=TRUE, NEG=FALSE,
-		     from, to, n=nc, cLog=NULL, ...)
+		     from, to, n=nc, cLog="", ...)
 {
-    if(NEG) {
-	r <- curve(dstable(-x, alpha=alpha, beta=beta, log=log),
-		   from=from, to=to, n=n, log = cLog, ...)
-	curve(dPareto(-x, alpha=alpha, beta=beta, log=log), add=TRUE,
-	      col=2, lwd=2, lty=2)
-    } else {
-	r <- curve(dstable(x, alpha=alpha, beta=beta, log=log),
-		   from=from, to=to, n=n, log = cLog, ...)
-	curve(dPareto(x, alpha=alpha, beta=beta, log=log), add=TRUE,
-	      col=2, lwd=2, lty=2)
-    }
-    leg.ab <- paste0("(", if(NEG) "-x" else "x",
-		     ", a=",formatC(alpha, digits=3),
-		     ", b=",formatC(beta, digits=3),")")
-    legend("topright", paste0(c("dstable ", "dPareto"), leg.ab),
-	   col=1:2, lty=1:2, lwd=1:2, bty="n")
-    invisible(r)
+  x<-exp(seq(from=log(from),to=log(to),length.out=n))
+  log_flag<-if (log) "TRUE" else "FALSE"
+  if(NEG) {
+    df<-rbind(data.frame(x=x,y=dstable(-x, alpha=alpha, beta=beta, log=log),fnct=rep("dstable",nc)),
+             data.frame(x=x,y=dPareto(-x, alpha=alpha, beta=beta, log=log),fnct=rep("dPareto",nc)))
+    qplot(x=x,y=y, data=df,geom="line", color=fnct, log=cLog,
+          main=bquote(dstable(-x, alpha == .(alpha), beta == .(beta), log == .(log_flag))),
+          ylab="f(x)", ...)
+  } else {
+    df<-rbind(data.frame(x=x,y=dstable(x, alpha=alpha, beta=beta, log=log),fnct=rep("dstable",nc)),
+             data.frame(x=x,y=dPareto(x, alpha=alpha, beta=beta, log=log),fnct=rep("dPareto",nc)))
+    qplot(x=x,y=y, data=df, geom="line", color=fnct, log=cLog,
+          main=bquote(dstable(x, alpha == .(alpha), beta == .(beta), log == .(log_flag))),
+          ylab="f(x)",...)
+  }
 }
 
 ## (was *S.L.O.W.* on [2010-03-28] !)
-r <- dstCurve(alpha = 1.01, beta = 0.3, NEG=TRUE,
+dstCurve(alpha = 1.01, beta = 0.3, NEG=TRUE,
 	      from=1e10, to=1e20, cLog="x", ylim = c(-100, -45))
 ## zoom in:
-r <- dstCurve(alpha = 1.01, beta = 0.3, , , .1e13, 9e13, ylim = c(-80, -55))
+dstCurve(alpha = 1.01, beta = 0.3,from=.1e13,to= 9e13, ylim = c(-80, -55))
 showProc.time()
 
 d <- dstable(xLrg, alpha = 1.001, beta = -0.9) # >= 50 warnings
@@ -322,21 +344,16 @@ options(dstable.debug = FALSE)
 ## -- in ./pstab-ex.R
 ##	   ~~~~~~~~~~
 
-if(doExtras) { ## actually "very-Extras" (checkLevel == "FULL")
- ## This needs 65 seconds (nb-mm3: 54*32*11 dstable() values)
+require(plyr)
+ep <- 2^-(1:54)## beta := 1 - ep ---> 1  {NB: 1 - 2^-54 == 1  numerically}
+alph.s <- (1:32)/16   # in (0, 2]
+df<-expand.grid(alpha=alph.s,ep=ep)
+df_b1<-ddply(df,.(alpha,ep),function(df) data.frame(x=0:10,y=dstable(0:10,df$alpha,1-df$ep)))
+print(summary(df_b1$y))
+r.b1 <- range(df_b1$y)
+stopifnot(0 < r.b1[1], r.b1[2] < 0.35)
+## "FIXME" test more: monotonicity in x {mode is < 0 = min{x_i}}, beta, alpha, ...
+showProc.time()
 
- ep <- 2^-(1:54)## beta := 1 - ep ---> 1  {NB: 1 - 2^-54 == 1  numerically}
- alph.s <- (1:32)/16   # in (0, 2]
- f.b1 <- sapply(alph.s, function(alf)
-		sapply(1 - ep, function(bet)
-		       dstable(0:10, alpha = alf, beta = bet)),
-		simplify = if(getRversion() >= "2.13") "array" else TRUE)
- print(summary(f.b1))
- r.b1 <- range(f.b1)
- stopifnot(0 < r.b1[1], r.b1[2] < 0.35)
- ## "FIXME" test more: monotonicity in x {mode is < 0 = min{x_i}}, beta, alpha, ...
- showProc.time()
-
-} else message("expensive dstable() checks  have been skipped")
-
+dev.off()
 cat('Time elapsed: ', proc.time(),'\n') # "stats"

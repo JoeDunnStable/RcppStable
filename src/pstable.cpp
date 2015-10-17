@@ -95,7 +95,8 @@ public:
                Rcout << "Integral of g1_p from theta = " << lower
                          << " to theta = " << upper
                          << " = " << result
-                         << " with absolute error - " << abserr << std::endl;
+                         << " with absolute error = " << abserr
+                         << ", subintervals = " << last << std::endl;
 
                return result;
   };
@@ -149,7 +150,7 @@ double FCT1(double x, double zeta, double alpha, double theta0,
     ur = boost::math::tools::toms748_solve(g_s, lower, upper, tol, max_iter);
     l_th = (ur.first+ur.second)/2;
     if(verbose)
-      Rcout << " g(-th0 +1e-6)=Inf: unirt(" << max_iter
+      Rcout << " g(-th0)=Inf: unirt(" << max_iter
                 << " it) -> l.th=" << l_th << std::endl;
   }
 //  double u_th = M_PI_2*(1-1e-6);
@@ -164,23 +165,42 @@ double FCT1(double x, double zeta, double alpha, double theta0,
     ur = boost::math::tools::toms748_solve(g_s, lower, upper, tol, max_iter);
     u_th = (ur.first+ur.second)/2;
     if(verbose)
-      Rcout << " g(pi/2 -1e-6)=Inf: unirt(" << max_iter <<" it) -> u.th= " << u_th << std::endl;
+      Rcout << " g(pi/2)=Inf: unirt(" << max_iter <<" it) -> u.th= " << u_th << std::endl;
 
   }
+  double eps = 1e-8;
+  g_solve g_s(-log(eps),&param,FALSE,verbose);
+  std::pair<double,double> th1_pair;
+  max_iter=200;
+  rel_eps_tolerance tol(1e-8);
+  lower =l_th;
+  upper = u_th;
+  th1_pair = boost::math::tools::toms748_solve(g_s, lower, upper, tol, max_iter);
+  double th1=(th1_pair.first+th1_pair.second)/2;
+  if (verbose){
+    double g_th1;
+    g_th1=g(th1,&param);
+    Rcout << "theta1 = " << th1
+          << ", g(theta1) = " << g_th1 << std::endl;
+    Rcout << "Region 1 is " << (th1-l_th) << " long. " << std::endl
+          << "Region 2 is " << (u_th-th1) << " long. " << std::endl;
+  }
   Int_g1_p int_g1_p(&param, dbltol, subdivisions, verbose);
-  double r = int_g1_p(l_th,u_th);
+  double r1 = int_g1_p(l_th,th1);
+  double r2 = int_g1_p(th1,u_th);
   if(verbose)
-    Rcout << "--> Int r= " << r << std::endl;
+    Rcout << "--> Int r1= " << r1 << std::endl
+          << "    Int r2= " << r2 << std::endl;
   if(giveI) {
     // { ==> alpha > 1 ==> c1 = 1; c3 = -1/pi}
     // return (1 - F) = 1 - (1 -1/pi * r) = r/pi :
-    return r/M_PI;
+    return (r1+r2)/M_PI;
   } else {
     double c1 = (alpha < 1) ? (.5 - theta0/M_PI) : 1.;
     double c3 = (alpha < 1) ? (1/M_PI) : (-1/M_PI);
     // FIXME: for alpha > 1, F = 1 - |.|*r(x)
     //    <==> cancellation iff we eventually want 1 - F() [-> 'lower.tail']
-    return c1 + c3* r;
+    return c1 + c3* (r1+r2);
   }
 } // {.FCT1}
 
@@ -215,7 +235,7 @@ double ga1_p(double u, ga1_p_param* param) {
   }
 }
 
-// Used to find the point where ga1_p becomes infinite
+// Used to find the point where ga1_p equals a finite value
 class ga1_p_solve {
 private:
   double value;
@@ -232,7 +252,31 @@ public:
   double operator()(const double th) {
     double g_ = ga1_p(th,param);
     if (verbose >=3)
-    Rcout << "ga1_p_solve: p2b= " << param->p2b << ", ea = "<< param->ea
+      Rcout << "ga1_p_solve: p2b= " << param->p2b << ", ea = "<< param->ea
+            << ", u0 = " << param->u0 << std::endl
+            << "th= " << th << ", g(th) = "<< g_ << " vs target " << value << std::endl;
+    return g_-value;
+  }
+};
+
+// Used to find the point where ga1_p becomes infinite
+class ga1_solve_inf {
+private:
+  double value;
+  ga1_p_param* param;
+  bool giveI;
+  int verbose;
+
+public:
+  ga1_solve_inf(double value_in, ga1_p_param* param_in, int verbose_in) {
+    value=value_in;
+    param=param_in;
+    verbose=verbose_in;
+  }
+  double operator()(const double th) {
+    double g_ = ga1_p(th,param);
+    if (verbose >=3)
+    Rcout << "ga1_solve_inf: p2b= " << param->p2b << ", ea = "<< param->ea
               << ", u0 = " << param->u0 << std::endl
               << "th= " << th << ", g(th) = "<< g_
               << ", isfinite(g_) " << isfinite(g_) << std::endl;
@@ -378,31 +422,58 @@ double FCT2(double x, double beta, double dbltol, int subdivisions,
 //   <==> g1_p(.) = exp(-g(.)) jumps from 1 to 0 and is 1 almost everywhere
 //  ---> the integration "does not see the 0" and returns too large..
   double u_ = 1;
-  double uu = u_* (1-1e-6);
+//  double uu = u_* (1-1e-6);
+  double uu = u_;
   if(ga1_p(uu,&param)== R_PosInf) {
-    ga1_p_solve ga1_p_s(0,&param, verbose);
+    ga1_solve_inf ga1_s_inf(0,&param, verbose);
     lower = -1;
     upper = uu;
     max_iter = 200;
     abs_eps_tolerance tol(1e-8);
     std::pair<double,double> ur;
     // Determine the point where ga1_p becomes infinite
-    ur = boost::math::tools::toms748_solve(ga1_p_s, lower, upper, tol, max_iter);
-    u_ = (ur.first + ur.second)/2;
+    ur = boost::math::tools::toms748_solve(ga1_s_inf, lower, upper, tol, max_iter);
+    u_ = ur.first;  // Take the finite side
     if(verbose)
       Rcout << " g(" << uu << ")=Inf:" << std::endl <<
                 " unirt(" << max_iter << " it) -> u.first = " << ur.first
                           << ", ur.second = " << ur.second << std::endl;
   }
+  double eps=1e-4;
+  bool do1;
+  double th1;
+  if((do1=(ga1_p(-1,&param)<eps && ga1_p(u_,&param)>eps))) {
+    ga1_p_solve ga1_p_s(eps,&param, verbose);
+    lower = -1;
+    upper = u_;
+    max_iter = 200;
+    abs_eps_tolerance tol(1e-8);
+    std::pair<double,double> th1_pair;
+    // Determine the point where ga1_p passes through eps
+    th1_pair = boost::math::tools::toms748_solve(ga1_p_s, lower, upper, tol, max_iter);
+    th1 = (th1_pair.first + th1_pair.second)/2;
+    if(verbose)
+      Rcout << " g(" << th1 << ") = "<< th1 << std::endl <<
+        " unirt(" << max_iter << " it) -> th1_pair.first = " << th1_pair.first
+                  << ", th1_pair.second = " << th1_pair.second << std::endl;
+  }
+
 
 //' g2_p(.) = exp(-g(.)) is strictly monotone .. no need for 'theta2' !
 //'
   Int_g2_p int_g2_p(&param, dbltol, subdivisions, verbose);
-  double r1 = int_g2_p(-1, u_) / 2;
-  // JLD: Added regions
-  // region 2 contributes to the total when giveI=TRUE & integrand = 1-exp(-g())
-  double r2 = int_g2_p(u_,1)/2;
-  double r = r1+r2;
+  double r1, r2, r3;
+  if (do1) {
+    r1 = int_g2_p(-1,th1);
+    r2 = int_g2_p(th1,u_);
+  } else {
+    r1=0;
+    r2 = int_g2_p(-1, u_);
+  }
+  // JLD: Added regions r1 and r2 are to force integrate to recognize the important region
+  // region 3 contributes to the total when giveI=TRUE & integrand = 1-exp(-g())
+  r3 = int_g2_p(u_,1);
+  double r = (r1+r2+r3)/2;
   if(verbose)
     Rcout << "--> Int r= " << r << std::endl;
   return (giveI) ? -r : r;
@@ -624,7 +695,7 @@ double sqstable1(double p, double alpha, double beta, int lower_tail, int log_p,
                  double dbltol, double integ_tol, int subdivisions, int verbose) {
 
   p_solve p_s(p, alpha, beta, lower_tail, log_p,
-              integ_tol, subdivisions,0);
+              integ_tol, subdivisions,verbose);
   std::pair<double,double> r;
   rel_eps_tolerance tol(dbltol);
   double guess = q_guess(p,alpha,beta,lower_tail,log_p);

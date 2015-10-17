@@ -1,19 +1,22 @@
 require(stablecpp)
 require(reshape2)
 
-compare_dstable.quick<-function(xs,alphas,betas) {
+compare_dstable.quick<-function(alphas,betas) {
   write("Comparing stablecpp::dstable to stablecpp::dstable.quick","")
-  n<-length(xs)
+  n<-2000
   returnNA <-function(e) rep(NA,n)
   df_out<-data.frame()
   write("alpha\n","")
   for (a in alphas) {
     write(a,"")
     for (b in betas) {
-      v_quick<-stablecpp::dstable.quick(xs,a,b,pm=0,zeta.tol=5e-5)
-      v_exact<-stablecpp::dstable(xs,a,b,pm=0,zeta.tol=5e-5)
+      xs<-stablecpp::qstable((.5+0:1999)/2000,a,b,pm=0)
+      v_quick<-stablecpp::dstable.quick(xs,a,b,pm=0,zeta.tol=5e-5,log=T)
+      v_exact<-stablecpp::dstable(xs,a,b,pm=0,zeta.tol=5e-5,log=T)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       x=xs,v_quick=v_quick,v_exact=v_exact))
+      cat(sprintf("alpha = %6g, beta = %6g, loglik_quick = %20g, loglik_exact = %20g\n",
+                   a, b, sum(v_quick), sum(v_exact)))
     }
   }
   df_out$diff<-with(df_out,abs(v_quick-v_exact))
@@ -26,8 +29,7 @@ compare_dstable.quick<-function(xs,alphas,betas) {
   df_out
 }
 
-xs<-seq(from=-1000,to=1000)/10
 alphas<-c(.1,.5,1,1.5,1.99,2)
 betas<-c(-1,-.5,0,.5,1)
-df_d<-compare_dstable.quick(xs,alphas,betas)
+df_d<-compare_dstable.quick(alphas,betas)
 
