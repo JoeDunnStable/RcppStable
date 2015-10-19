@@ -5,9 +5,10 @@ Version: 0.1
 Date: 2015-09-22
 Author: Joseph Dunn, Diethelm Wuertz, Martin Maechler and Rmetrics core team members.
 Maintainer: "Joseph Dunn"<jldunn@verizon.net>
-Depends: R (>= 3.1.0), stats, utils
-Imports: Rcpp, RcppArmadillo
+Depends: R (>= 3.1.0),  utils
+Imports: Rcpp, stats, stats4
 LinkingTo: Rcpp, RcppArmadillo, BH
+Suggests: FMStable, RUnit, Rmpfr, ggplot2, plyr, reshape2, stabledist
 Description: This package contains density, probability and quantile functions,
   and random number generation for (skew) stable distributions, using the
   parametrizations of Nolan. The routines .fct1, fct2, FCT1, and FCT2 have been

@@ -374,7 +374,7 @@ dstable.quick<-function(x,alpha,beta,gamma=1,delta=0,pm=0,log=F,
     loglik<-dstable(x,alpha=alpha,beta=beta,pm=0,tol=tol,zeta.tol=5e-5,log=T)
   }
   loglik<-loglik-log(gamma)
-  loglik<-loglik[pracma::invperm(ordx)]
+  loglik<-loglik[order(ordx)]
   if(log==T)
     loglik
   else

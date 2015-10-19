@@ -1,4 +1,5 @@
 importFrom(Rcpp, evalCpp)
+importFrom(stats4, mle)
 importFrom(stats,
 	   dnorm, pnorm, qnorm, rnorm,
 	   dcauchy, pcauchy, qcauchy, rcauchy,
