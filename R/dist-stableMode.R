@@ -31,18 +31,9 @@
 stableMode <- function(alpha, beta, beta.max = 1 - 1e-11,
 		       tol = .Machine$double.eps^0.25)
 {
-    stopifnot(0 < alpha, alpha <= 2, length(alpha) == 1,
-	      -1 <= beta, beta <= 1, length(beta) == 1,
+  verbose=getOption("dstable.debug", default=F)
+  stopifnot(0 < alpha, alpha <= 2, length(alpha) == 1,
+	          -1 <= beta, beta <= 1, length(beta) == 1,
               length(beta.max) == 1)
-    if(alpha * beta == 0){
-	      0
-      }
-    else {
-      if(beta > beta.max) beta <- beta.max
-      if(beta < -beta.max) beta<- -beta.max
-
-      optimize(dstable, interval = c(-0.7, 0)*sign(beta),
-  	     alpha = alpha, beta = beta, pm = 0,
-  	     maximum = TRUE, tol = tol)$maximum
-    }
+  sdstableMode(alpha,beta,beta.max,tol,verbose)
 }

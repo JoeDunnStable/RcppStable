@@ -31,8 +31,8 @@ pstable(q, alpha, beta, gamma = 1, delta = 0, pm = 0,
         tol = 64*.Machine$double.eps, subdivisions = 1000)
 qstable(p, alpha, beta, gamma = 1, delta = 0, pm = 0,
         lower.tail = TRUE, log.p = FALSE,
-        tol = .Machine$double.eps^0.25, maxiter = 1000, trace = 0,
-        integ.tol = 1e-7, subdivisions = 200)
+        tol = 64*.Machine$double.eps, maxiter = 1000, trace = 0,
+        integ.tol = 64*.Machine$double.eps, subdivisions = 200)
 rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
 }
 

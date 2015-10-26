@@ -1,4 +1,4 @@
-\name{StableDistribution}
+\name{stable_fit}
 
 \title{Fitting Stable Distribution Function to Sample Data}
 
@@ -32,6 +32,8 @@ dstable.quick(x, alpha, beta, gamma=1, delta=0, pm=0,
   which indicates McCulloch's quantile based method, or "mle", which indicates that
   a maximum likelihood method is to be used with an iniital quess from McCulloch's
   method.}
+
+  \item{x}{numeric vector of quantiles for dstable.quick}
 
   \item{alpha, beta, gamma, delta}{
     value of the index parameter \code{alpha} with \code{alpha = (0,2]};
@@ -68,63 +70,39 @@ dstable.quick(x, alpha, beta, gamma=1, delta=0, pm=0,
 \value{
     Function \code{dstable.quick} returns a numeric vectors with the density.
 
-    Function \code{stable.fit} returns a small database containing the fitted
-    parameters
+    Function \code{stable.fit} returns a list with two items: \code{parameters}, a small          database containing the fitted parameters, and \code{fit_mle}, the output of stats4::mle      when the \code{type} is "mle" or \code{NULL} when the \code{type} is "q".
 }
 
 \details{
     \bold{Skew Stable Distribution:}
     \cr\cr
-    The function \code{dstable.quick} selects a subset of the input sample, \code{y}
-    and uses \code{dstable} to calculate the log of the skew stable distribution probability.
-    These probabilites are then compared to the corresponding log probabilities for the Student
-    t distribution with \code{df=alpha} and a natural cubic spline is fit through the subsample      points and used to estimate the log probabiliites for the rest of the sample.
+    The function \code{dstable.quick} uses \code{dstable} to evaluate (1) all points \code{y}
+    close to the mode, (2) a few points at the extreme tail of \code{y}, and (3) a                sample of points away from the mode or the extreme tail. The log probabilites for points      in category (3) are then compared to the corresponding log probabilities for the Student
+    t distribution with \code{df=alpha} and a natural cubic spline if fit using the ratios so     calculated as knots.  The cubic spline is then used to estimate the log probabiliites for     the rest of the points \code{y} that are not in categories (1) and (2).
 }
+
 \seealso{
-  the \code{\link{dstable}()} function for details and
+  the \code{\link{dstable}()} function for details and references.
 }
 \author{
   Joseph Dunn.
 }
 
 \examples{
-## stable -
+## stable_fit
 
-## Plot stable random number series
+## Generate series of stable random numbers with known alpha and beta.
    set.seed(1953)
-   r <- rstable(n = 1000, alpha = 1.9, beta = 0.3)
-   plot(r, type = "l", main = "stable: alpha=1.9 beta=0.3",
-        col = "steelblue")
-   grid()
+   r <- rstable(n = 10000, alpha = 1.9, beta = 0.3)
 
-## Plot empirical density and compare with true density:
-   hist(r, n = 25, probability = TRUE, border = "white",
-        col = "steelblue")
-   x <- seq(-5, 5, 0.25)
-   lines(x, dstable(x, alpha = 1.9, beta = 0.3, tol= 1e-3), lwd = 2)
+## Calculate the fit using McCulloch's method
+   fit_q<-stable_fit(r,type="q")
+   print(fit_q)
 
-## Plot df and compare with true df:
-   plot(ecdf(r), do.points=TRUE, col = "steelblue",
-        main = "Probabilities:  ecdf(rstable(1000,..)) and true  cdf F()")
-   rug(r)
-   lines(x, pstable(q = x, alpha = 1.9, beta = 0.3),
-         col="#0000FF88", lwd= 2.5)
-
-## Switching  sign(beta)  <==> Mirror the distribution around  x == delta:
-curve(dstable(x, alpha=1.2, beta =  .8, gamma = 3, delta = 2), -10, 10)
-curve(dstable(x, alpha=1.2, beta = -.8, gamma = 3, delta = 2),
-      add=TRUE, col=2)
-## or the same
-curve(dstable(2*2-x, alpha=1.2, beta = +.8, gamma = 3, delta = 2),
-      add=TRUE, col=adjustcolor("gray",0.2), lwd=5)
-abline(v = 2, col = "gray", lty=2, lwd=2)
-axis(1, at = 2, label = expression(delta == 2))
-
-## Compute quantiles:
-   x. <- -4:4
-   px <- pstable(x., alpha = 1.9, beta = 0.3)
-  (qs <- qstable(px, alpha = 1.9, beta = 0.3))
-   stopifnot(all.equal(as.vector(qs), x., tol = 1e-5))
+## Calculate the fit using McCulloch's method for the initial quess, followed
+## by the Maximum Likelihood Method.
+   fit_mle<-stable_fit(r,type="mle")
+   print(fit_mle)
 }
 
 \keyword{distribution}

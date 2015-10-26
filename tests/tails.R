@@ -137,7 +137,6 @@ plot.dstableTailratio <- function(x, type="l", col="blue3",
     dat <- rbind(dat,data.frame(x=dat["x"],eps=exp(predict(fm)),type=rep("fit",nrow(dat))))
     ## NOTA BENE: Empirically,  I see that  eps > 0 <==> alpha > 1
     ##                                      eps < 0 <==> alpha < 1
-    old_theme<-theme_update(legend.position=c(1,1),legend.justification=c(1,1))
     Form <- function(x) formatC(x, digits=4, wid=1)
     fit.line <-substitute(log(epsilon) == A + B * log(x),
                           list(A = Form(coef(fm)[["(Intercept)"]]),
@@ -148,9 +147,10 @@ plot.dstableTailratio <- function(x, type="l", col="blue3",
             scale_color_discrete(breaks=c("actual","fit"),
                                  labels=c("actual", fit.line))+
             annotation_logticks()
-    theme_set(old_theme)
     gph
 }
+
+old_theme<-theme_update(legend.position=c(1,1),legend.justification=c(1,1))
 
 plot(fr   <- dstab.tailratio(1.01, 0.8))
 plot(fr   <- dstab.tailratio(1.05, 0.4))
@@ -172,6 +172,7 @@ showProc.time()
 plot(fr   <- dstab.tailratio(1.6, 0.9))
 plot(fr   <- dstab.tailratio(1.7, 0.1))
 plot(fr   <- dstab.tailratio(1.8, 0.2))
+theme_set(old_theme)
 
 showProc.time()
 

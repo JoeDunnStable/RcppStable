@@ -128,8 +128,8 @@ pstable <- function(q, alpha, beta, gamma = 1, delta = 0, pm = 0,
 ## ------------------------------------------------------------------------------
 qstable <- function(p, alpha, beta, gamma = 1, delta = 0, pm = 0,
                     lower.tail = TRUE, log.p = FALSE,
-                    tol = .Machine$double.eps^0.25, maxiter = 1000, trace = 0,
-                    integ.tol = 1e-7, subdivisions = 200)
+                    tol = 64*.Machine$double.eps, maxiter = 1000, trace = 0,
+                    integ.tol = 64*.Machine$double.eps, subdivisions = 200)
 {
   ## A function implemented by Diethelm Wuertz
 
@@ -293,6 +293,7 @@ pPareto <- function(x, alpha, beta, lower.tail = TRUE, log.p = FALSE) {
 
 dstable.quick<-function(x,alpha,beta,gamma=1,delta=0,pm=0,log=F,
                         tol = 64 * .Machine$double.eps, zeta.tol = NULL, subdivisions = 1000){
+  verbose=getOption("dstable.debug", default=F)
   if (pm==1){
     if (alpha!=1)
       delta<-delta+beta*gamma*tan(pi*alpha/2)
@@ -304,109 +305,32 @@ dstable.quick<-function(x,alpha,beta,gamma=1,delta=0,pm=0,log=F,
     gamma <- alpha^(-1/alpha) * gamma
   } ## else pm == 0
   x<-(x-delta)/gamma
-  ordx<-order(x)
-  x<-sort(x)
-
-  if (length(x)>200 && alpha !=2){
-    loglik=rep(-Inf,length(x))
-    ## the splines don't work well near the mode so we'll use dstable for everything near the mode
-    x_mode<-stableMode(alpha,beta)
-    p_mode<-pstable(x_mode,alpha=alpha,beta=beta,tol=tol)
-    sel_exact<-x>x_mode-.1 & x<x_mode+.1
-    sel_exact<-sel_exact | seq_along(x)<=10 | seq_along(x)>length(x)-10
-    if (alpha<1) {
-      if (beta==1)
-        sel_zero<-x<=-tan(pi2*alpha)
-      else if (beta==-1)
-        sel_zero<-x>=tan(pi2*alpha)
-      else
-        sel_zero<-rep(F,length(x))
-    } else {
-      sel_zero<-rep(F,length(x))
-    }
-    sel_high<-(!sel_exact) & (x > x_mode) &(!sel_zero)
-    sel_low<-(!sel_exact) & (x < x_mode) & (!sel_zero)
-    if (sum(sel_high)<85) {
-      sel_exact <- sel_exact | sel_high
-      df_knot<<-data.frame()
-    } else {
-      x_high_break1<-x_mode+1
-      x_high_break2<-x_mode+10
-      x_high_inner<-c(seq(x_mode+.1,x_high_break1,length.out=30),
-                      seq(x_high_break1,x_high_break2,length.out=50)[-1])
-      pt_high_outer<-seq(pt(x_high_break2,alpha),to=1-.000001,length.out=10)[-1]
-      pt_knot_high<-c(pt(x_high_inner,alpha),pt_high_outer)
-      x_knot_high<-c(x_high_inner,qt(pt_high_outer,alpha))
-      y_knot_high<-dstable(x_knot_high,alpha,beta,log=T) - dt(x_knot_high,alpha,log=T)
-      sel_high_finite<-is.finite(y_knot_high)
-      pt_knot_high<-pt_knot_high[sel_high_finite]
-      x_knot_high<-x_knot_high[sel_high_finite]
-      y_knot_high<-y_knot_high[sel_high_finite]
-      df_knot<<-data.frame(x_knot=x_knot_high,
-                           pt_knot=pt_knot_high,
-                           y_knot=y_knot_high)
-      loglik[sel_high]<-cubic_spline(pt(x[sel_high],alpha),pt_knot_high,y_knot_high,F,c(0,0))+dt(x[sel_high],alpha,log=T)
-    }
-    if (sum(sel_low)<85) {
-      sel_exact <- sel_exact | sel_low
-    } else {
-      x_low_break2<-x_mode-10
-      x_low_break1<-x_mode-1
-      x_low_inner=c(seq(x_low_break2,x_low_break1,length.out=50),
-                  seq(x_low_break1, x_mode-.1,length.out=30)[-1])
-      pt_low_outer=seq(0.000001,to=pt(x_low_break2,alpha),length.out=10)[-10]
-      pt_knot_low<-c(pt_low_outer,pt(x_low_inner,alpha))
-      x_knot_low<-c(qt(pt_low_outer,alpha),x_low_inner)
-      y_knot_low<-dstable(x_knot_low,alpha,beta,log=T) - dt(x_knot_low,alpha,log=T)
-      sel_low_finite<-is.finite(y_knot_low)
-      pt_knot_low<-pt_knot_low[sel_low_finite]
-      x_knot_low<-x_knot_low[sel_low_finite]
-      y_knot_low<-y_knot_low[sel_low_finite]
-      df_knot<<-rbind(data.frame(x_knot=x_knot_low,
-                           pt_knot=pt_knot_low,
-                           y_knot=y_knot_low),df_knot)
-      loglik[sel_low]<-cubic_spline(pt(x[sel_low],alpha),pt_knot_low,y_knot_low,F,c(0,0))+dt(x[sel_low],alpha,log=T)
-    }
-
-    loglik[is.na(loglik)]<--Inf
-    loglik[sel_exact]<-dstable(x[sel_exact],alpha,beta,tol=tol,zeta.tol=zeta.tol,log=T)
-  } else {
-    loglik<-dstable(x,alpha=alpha,beta=beta,pm=0,tol=tol,zeta.tol=5e-5,log=T)
+  ## Special Cases:
+  if (alpha == 2) {
+    loglik<-dnorm(x, mean = 0, sd = sqrt(2), log = T)
+  }
+  else if (alpha == 1 && beta == 0) {
+    loglik<-dcauchy(x, log = T)
+  }
+  else {
+    if (is.null(zeta.tol))
+    zeta.tol<-0.
+    loglik<-sdstable_quick(x,alpha,beta,
+                           tol = tol, zeta_tol = zeta.tol, subdivisions = subdivisions,
+                           verbose=verbose)
   }
   loglik<-loglik-log(gamma)
-  loglik<-loglik[order(ordx)]
   if(log==T)
     loglik
   else
     exp(loglik)
 }
 
-stable_tabulate<-function(alphas,betas){
-  df_out<-data.frame()
-  for (alpha in alphas) {
-    for (beta in betas){
-      q<-qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,delta=0,gamma=1,pm=0)
-      q[abs(q)<=1e-8]<-0
-      df_out<-rbind(df_out,data.frame(alpha=alpha,beta=beta,type="q_skew",
-                                      value=(q[5]+q[1]-2*q[3])/(q[5]-q[1])))
-      df_out<-rbind(df_out,data.frame(alpha=alpha,beta=beta,type="q_kurt",
-                                      value=(q[5]-q[1])/(q[4]-q[2])))
-    }
-  }
-  df_out
-}
-
-alphas<-1:20/10
-betas<--10:10/10
-stable_table<-stable_tabulate(alphas,betas)
-
 stable_fit<-function(y,type="q",quick=T,pm=0) {
   n<-length(y)
   df_trace<<-data.frame()
+  eps<-1e-10
   ll<-function(alpha,beta,gamma,delta) {
-    alpha=max(min(2,alpha),.1)
-    beta=max(min(1,beta),-1)
-    gamma=max(1e-100,gamma)
     df_trace<<-rbind(df_trace,data.frame(alpha=alpha,beta=beta,
                                          gamma=gamma,delta=delta,out=NA))
     if (quick)
@@ -416,7 +340,16 @@ stable_fit<-function(y,type="q",quick=T,pm=0) {
     df_trace[nrow(df_trace),"out"]<<-out
     max(min(out,1e100),-1e+100)  #Optim doesn't like infinite numbers
   }
-
+  ll_mle<-function(par) {
+    alpha<-.01+eps+(1.99-2*eps)*pcauchy(par["t_alpha"])  ## alpha between .01 and 2
+    beta<--1+eps+(2-2*eps)*pcauchy(par["t_beta"])      ## beta between -1 and 1
+    gamma<-exp(par["l_gamma"])         ## gamma positive
+    ll(alpha,beta,gamma,par["delta"])
+  }
+  ll_q_mle<-function(par) {
+    gamma<-exp(par["l_gamma"])         ## gamma positive
+    ll(alpha,beta,gamma,par["delta"])
+  }
   # First McCulloch's method
   q=quantile(y,probs=c(.05,.25,.5,.75,.95))
   q_kurt<-(q[5]-q[1])/(q[4]-q[2])
@@ -462,29 +395,58 @@ stable_fit<-function(y,type="q",quick=T,pm=0) {
   df_out$q_skew<-(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1])
   df_out$q_scale<-qs[4]-qs[2]
   df_out$q_location<-qs[3]
+  df_out$convergence<-NA
   if (type=="mle") {
-    fit_mle<-stats4::mle(ll,start=df_out[c("alpha","beta","gamma","delta")],
-                  lower=c(alpha=.1,beta= (-1+1e-10), gamma=1e-10,delta=-Inf),
-                  upper=c(alpha=2,beta=1-1e-10,gamma=Inf,delta=Inf),
-                  method="L-BFGS-B")
-    alpha=fit_mle@coef[["alpha"]]
-    beta=fit_mle@coef[["beta"]]
-    gamma=fit_mle@coef[["gamma"]]
-    delta=fit_mle@coef[["delta"]]
+    fit_mle<-optim(par=c(t_alpha=min(1e100,max(-1e100,qcauchy((df_out$alpha-.01)/(1.99)))),
+                                    t_beta=min(1e100,max(-1e100,qcauchy((1+df_out$beta)/(2)))),
+                                    l_gamma=log(df_out$gamma),
+                                    delta=df_out$delta),
+                   fn=ll_mle,
+                   control=list(maxit=1000))
+    tmp<<-fit_mle
+    alpha=.01+eps+(1.99-2*eps)*pcauchy(fit_mle$par[["t_alpha"]])
+    beta=-1+eps+(2-2*eps)*pcauchy(fit_mle$par[["t_beta"]])
+    gamma=exp(fit_mle$par[["l_gamma"]])
+    delta=fit_mle$par[["delta"]]
     qs<-qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,gamma=gamma,delta=delta)
     df_out<-rbind(df_out,
                   data.frame(alpha=alpha,
                              beta=beta,
                              gamma=gamma,
                              delta=delta,
-                             two_ll_n=-2*as.double(fit_mle@min)/n,
+                             two_ll_n=-2*as.double(fit_mle$value)/n,
                              pm=pm,
                              n=n,
                              method="mle",
                              q_kurt=(qs[5]-qs[1])/(qs[4]-qs[2]),
                              q_skew=(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1]),
                              q_scale=qs[4]-qs[2],
-                             q_location=qs[3]))
+                             q_location=qs[3],
+                             convergence=fit_mle$convergence))
+  }
+  else if (type=="q_mle") {
+    ## alpha and beta are from McCulloch's method
+    fit_mle<-optim(par=c(l_gamma=log(df_out$gamma),
+                         delta=df_out$delta),
+                   fn=ll_q_mle,
+                   control=list(maxit=1000))
+    gamma=exp(fit_mle$par[["l_gamma"]])
+    delta=fit_mle$par[["delta"]]
+    qs<-qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,gamma=gamma,delta=delta)
+    df_out<-rbind(df_out,
+                  data.frame(alpha=alpha,
+                             beta=beta,
+                             gamma=gamma,
+                             delta=delta,
+                             two_ll_n=-2*as.double(fit_mle$value)/n,
+                             pm=pm,
+                             n=n,
+                             method="q_mle",
+                             q_kurt=(qs[5]-qs[1])/(qs[4]-qs[2]),
+                             q_skew=(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1]),
+                             q_scale=qs[4]-qs[2],
+                             q_location=qs[3],
+                             convergence=fit_mle$convergence))
   }
   if (type=="q")
     list(parameters=df_out,fit_mle=NULL)

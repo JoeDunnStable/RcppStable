@@ -45,7 +45,15 @@ sqstable <- function(p, alpha, beta, lower_tail, log_p, dbltol, integ_tol, subdi
     .Call('stablecpp_sqstable', PACKAGE = 'stablecpp', p, alpha, beta, lower_tail, log_p, dbltol, integ_tol, subdivisions, verbose)
 }
 
+sdstableMode <- function(alpha, beta, beta_max = 1-1e-11, tol = 0.0001220703125, verbose = 0L) {
+    .Call('stablecpp_sdstableMode', PACKAGE = 'stablecpp', alpha, beta, beta_max, tol, verbose)
+}
+
 cubic_spline <- function(x, x_knots, y_knots, isclamped, deriv) {
     .Call('stablecpp_cubic_spline', PACKAGE = 'stablecpp', x, x_knots, y_knots, isclamped, deriv)
+}
+
+sdstable_quick <- function(x, alpha, beta, tol, zeta_tol, subdivisions, verbose) {
+    .Call('stablecpp_sdstable_quick', PACKAGE = 'stablecpp', x, alpha, beta, tol, zeta_tol, subdivisions, verbose)
 }
 

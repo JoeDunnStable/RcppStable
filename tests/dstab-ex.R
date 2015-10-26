@@ -5,7 +5,6 @@ dPareto <- stablecpp:::dPareto
 
 source(system.file("test-tools-1.R", package = "Matrix"), keep.source=interactive())
 					#-> identical3(), showProc.time(),...
-if(!require("sfsmisc")) eaxis <- axis # use sfsmisc::eaxis if available
 
 stopifnot(0 < print(dstable(4000., alpha=1.00001, beta=0.6)))
 ## gave error in fBasics::dstable()
@@ -68,7 +67,7 @@ x<-seq(-1,1,length.out=nc)
 qplot(x=x,y=dstable(x, alpha = 0.3, beta = 0.5, tol=1e-7),ylab="f(x)",
             main=expression(dstable(x, alpha== 0.3, beta  == 0.5, tol == 10^-7)),geom="line")
 m3 <- stableMode(0.3, 0.5, tol=1e-14)# still with 3 warnings
-stopifnot(all.equal(m3, -0.2505743952946, tol = 1e-10))
+stopifnot(all.equal(m3, -0.2505743952946, tol = 2e-8))
 ## zoom into the above
 x<-seq(-.27, -.22, length.out=nc)
 qplot(x=x,y=dstable(x, alpha = 0.3, beta = 0.5, tol=1e-7), ylab="f(x)",
@@ -83,7 +82,7 @@ qplot(x=x,y=y,geom="line",
       ylab = "f(x)", ylim = c(0, 25))+
   geom_vline(aes(xintercept=m1),color="green",linetype=2,size=1)+
   geom_hline(aes(yintercept=0), color="red", linetype=2,size=1)
-stopifnot(all.equal(m1, -0.079193, tol=1e-5)) # -0.079193188, was -0.079192219, and -0.0791921758
+stopifnot(all.equal(m1, -0.079192219, tol=2e-7)) # -0.079192219, was -0.0791921758
 ## check mode *and* unimodality
 i. <- x > m1
 stopifnot(## decreasing to the right:
@@ -228,21 +227,26 @@ f2 <- dstable(-50929.58, alpha= 1.00001, beta= -.8)
 stopifnot(f1 > 0, f2 > 0)
 
 ## these all work (luck):
-zet <- zeta(alpha= 1.00001, beta= -.8)# -50929.58
-## here, we must have larger zeta.tol: = 5e-5 is fine; now using "automatic" default
-x<-seq(-3,7,length.out=nc)
-df<-rbind(data.frame(x=x,y=dstable(zet+x, alpha= 1.00001, beta= -.8),fnct="dstable"),
-          data.frame(x=x,y=dPareto(zet+x, alpha= 1.00001, beta= -.8),fnct="dPareto"))
-z.txt <- bquote(paste(x == zeta(.), phantom() == .(signif(zet,6))))
-qplot(x=x,y=y, geom="line",data=df,color=fnct,
-      main=bquote(dstable(zeta + x, alpha == 1.00001, beta == -.8)),
-	    xlab = expression(x - zeta(alpha,beta)),
-	    ylim=c(2.1, 2.3)*1e-10) +
-      geom_vline(aes(xintercept=0), color="pink")+
-      geom_text(aes(x=0,y=2.30*1e-10,label=deparse(z.txt)), alpha=1,parse=T,hjust=0, color="pink")
+chk_near_zeta<-function(alpha,beta){
+  zet <- zeta(alpha= alpha, beta= beta)
+  ## here, we must have larger zeta.tol: = 5e-5 is fine; now using "automatic" default
+  x<-max(abs(zet),1)*seq(-5e-4,5e-4,length.out=nc+if(nc%%2==0) 1 else 0)
+  df<-data.frame(x=x,y=dstable(zet+x, alpha= alpha, beta= beta,zeta.tol=5e-5),fnct="dstable")
+  if (abs(zet)>1e4)
+    df<-rbind(df,data.frame(x=x,y=dPareto(zet+x, alpha= alpha, beta= beta),fnct="dPareto"))
+  z.txt <- bquote(paste(x == zeta(.), phantom() == .(signif(zet,6))))
+  show(qplot(x=x,y=y, geom="line",data=df,color=fnct,
+        main=bquote(dstable(x+zeta(alpha,beta), alpha == .(alpha), beta == .(beta)))) +
+        geom_hline(aes(yintercept=dstable(zet,alpha,beta)),color="green")+
+        geom_vline(aes(xintercept=0), color="pink")+
+        geom_text(aes(x=0,y=max(df$y)-.1*(max(df$y)-min(df$y)),label=deparse(z.txt)), alpha=1,parse=T,hjust=0, color="pink"))
+  df
+}
 ## no longer much noise (thanks to zeta.tol = 1e-5):
+df<-chk_near_zeta(1.00001,-.8)
 stopifnot({ rr <- range(df$y)
 	    2.1e-10 < rr & rr < 2.3e-10 })
+df<-chk_near_zeta(1.00001,0)
 
 showProc.time()
 
@@ -259,7 +263,7 @@ qplot(x=x,y=y,data=df,color=fnct, geom="line",
       ylab="f(x)")
 ## was discontinuous but no longer
 ## ditto:
-x<seq(-70,80,length.out=nc)
+x<-seq(-70,80,length.out=nc)
 df<-rbind(data.frame(x=x,y=dstable(x, alpha=1, beta= 0.1, log=TRUE),fnct="dstable"),
           data.frame(x=x,y=dPareto(x, alpha=1, beta= 0.1, log=TRUE),fnct="dPareto"))
 qplot(x=x, y=y, data=df, color=fnct, geom="line",
@@ -348,7 +352,7 @@ require(plyr)
 ep <- 2^-(1:54)## beta := 1 - ep ---> 1  {NB: 1 - 2^-54 == 1  numerically}
 alph.s <- (1:32)/16   # in (0, 2]
 df<-expand.grid(alpha=alph.s,ep=ep)
-df_b1<-ddply(df,.(alpha,ep),function(df) data.frame(x=0:10,y=dstable(0:10,df$alpha,1-df$ep)))
+df_b1<-ddply(df,.(alpha,ep),function(df) data.frame(x=0:10,y=dstable(0:10,df$alpha,1-df$ep,zeta.tol=5e-5)))
 print(summary(df_b1$y))
 r.b1 <- range(df_b1$y)
 stopifnot(0 < r.b1[1], r.b1[2] < 0.35)

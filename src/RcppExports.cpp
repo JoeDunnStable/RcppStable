@@ -104,6 +104,21 @@ BEGIN_RCPP
     return __result;
 END_RCPP
 }
+// sdstableMode
+double sdstableMode(double alpha, double beta, double beta_max, double tol, int verbose);
+RcppExport SEXP stablecpp_sdstableMode(SEXP alphaSEXP, SEXP betaSEXP, SEXP beta_maxSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject __result;
+    Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta_max(beta_maxSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    __result = Rcpp::wrap(sdstableMode(alpha, beta, beta_max, tol, verbose));
+    return __result;
+END_RCPP
+}
 // cubic_spline
 NumericVector cubic_spline(NumericVector x, NumericVector x_knots, NumericVector y_knots, bool isclamped, NumericVector deriv);
 RcppExport SEXP stablecpp_cubic_spline(SEXP xSEXP, SEXP x_knotsSEXP, SEXP y_knotsSEXP, SEXP isclampedSEXP, SEXP derivSEXP) {
@@ -116,6 +131,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type isclamped(isclampedSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type deriv(derivSEXP);
     __result = Rcpp::wrap(cubic_spline(x, x_knots, y_knots, isclamped, deriv));
+    return __result;
+END_RCPP
+}
+// sdstable_quick
+NumericVector sdstable_quick(NumericVector x, double alpha, double beta, double tol, double zeta_tol, int subdivisions, int verbose);
+RcppExport SEXP stablecpp_sdstable_quick(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP tolSEXP, SEXP zeta_tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject __result;
+    Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type zeta_tol(zeta_tolSEXP);
+    Rcpp::traits::input_parameter< int >::type subdivisions(subdivisionsSEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    __result = Rcpp::wrap(sdstable_quick(x, alpha, beta, tol, zeta_tol, subdivisions, verbose));
     return __result;
 END_RCPP
 }

@@ -1,7 +1,7 @@
 /* If using sourceCpp run Sys.setenv("PKG_CXXFLAGS"="-I /opt/local/include") */
 
 #include <Rcpp.h>
-#include "Stable.hpp"
+#include "Stable.h"
 #include <iostream>
 #include <boost/math/tools/toms748_solve.hpp>
 #include <R_ext/Applic.h> // For integr_fn and Rdqags

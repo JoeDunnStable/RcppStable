@@ -1,7 +1,7 @@
 /* If using sourceCpp run Sys.setenv("PKG_CXXFLAGS"="-I /opt/local/include") */
 
 #include <Rcpp.h>
-#include "Stable.hpp"
+#include "Stable.h"
 #include <Rmath.h>
 #include <limits>
 #include <iostream>
@@ -232,7 +232,9 @@ double fct1(double x, double zeta,
   }
   g_=g(M_PI_2,&param);
   if (verbose >=2)
-    Rcout << std::endl << "g(M_PI_2) = " << g_ << std::endl;
+    Rcout << std::endl
+          << "-theta0 = "<< -theta0 << ", g(-theta0) = " << g_mth0 << std::endl
+          << "pi/2 =    " << M_PI_2 << ", g(M_PI_2) =  " << g_ << std::endl;
   double theta2;
   double g1_th2;
   if ((alpha >= 1 && !isnan(g_) && g_ > 1) ||
@@ -292,7 +294,7 @@ double fct1(double x, double zeta,
 */
 }
   }
-  double eps = 1e-04;
+  double eps = 1e-10;
   double g1_th0= -theta0;
   g1(&g1_th0,1,&param);
   g1_solve g1_s(eps,&param,verbose);
@@ -308,7 +310,7 @@ double fct1(double x, double zeta,
     double upper = theta2;
     th1_pair = boost::math::tools::toms748_solve(g1_s, lower, upper, tol, max_iter);
     th1=(th1_pair.first+th1_pair.second)/2;
-    if (verbose){
+    if (verbose>=2){
       double g1_th1 = th1;
       g1(&g1_th1,1,&param);
       Rcout << "theta1 = " << th1
@@ -328,7 +330,7 @@ double fct1(double x, double zeta,
     double upper = M_PI_2;
     th3_pair = boost::math::tools::toms748_solve(g1_s, lower, upper, tol, max_iter);
     th3=(th3_pair.first+th3_pair.second)/2;
-    if (verbose){
+    if (verbose>=2){
       double g1_th3 = th3;
       g1(&g1_th3,1,&param);
       Rcout << "theta3 = " << th3
@@ -374,7 +376,7 @@ double fct1(double x, double zeta,
                 << ") = " << c2*(r1+r2+r3+r4)
               << ", abs.err = " << c2*rerr << std::endl;
   }
-  if (rerr > fabs((r1+r2+r3+r4)))
+  if (rerr > .25*fabs((r1+r2+r3+r4)))
     return (log_flag) ? R_NegInf : 0;  ///this will cause the use of dPareto.
   if (log_flag)
     return log(c2) + log(r1 + r2 + r3 + r4);
@@ -516,14 +518,16 @@ double fct2(double x, double beta, bool log_flag,
 {
 // the standard boost eps_tolerance is relative, which doesn't work with
 // near infinite numbers
-  Rcout.setf(std::ios::scientific, std::ios::floatfield);
   boost::uintmax_t max_iter;
   abs_eps_tolerance tol(dbltol);
 
   double i2b = 1/(2*beta);
   double p2b = M_PI*i2b; // = pi/(2 beta)
   double ea = -p2b*x;
-  if(!isfinite(ea)) return (log_flag? R_NegInf : 0);
+  if(!isfinite(ea)) {
+    Rcout << "ea is infinite returning 0" << std::endl;
+    return (log_flag? R_NegInf : 0);
+  }
 
 //' g() is strictly monotone;
 //' g(u) := original_g(u*pi/2)
@@ -535,8 +539,15 @@ double fct2(double x, double beta, bool log_flag,
   param.u0=u0;
   param.p2b=p2b;
   param.ea=ea;
+  double g2_m1= -1;
+  g2(&g2_m1,1,&param);
+  double g2_p1= 1;
+  g2(&g2_p1,1,&param);
+  if (verbose >=2)
+    Rcout << "ga1(-1) = " << ga1(-1,&param) << ", g2(-1) = " << g2_m1 << std::endl
+          << "ga1(+1) = " << ga1(+1,&param) << ", g2(+1) = " << g2_p1 << std::endl;
   // We know that the maximum of g2(.) is = exp(-1) = 0.3679  "at" g(.) == 1
-  // find that by bisection :
+  // find that using toms748 :
   ga1_solve ga1_s(1,&param,FALSE,verbose);
   max_iter = 200;
   double lower=-1;
@@ -552,9 +563,7 @@ double fct2(double x, double beta, bool log_flag,
               << ", ur_pair.second = " << ur_pair.second << std::endl
               << "u2 = " << u2 << ", g2(u2) = " << g2_u2 << std::endl;
 
-  double eps = 1e-04;
-  double g2_m1= -1;
-  g2(&g2_m1,1,&param);
+  double eps = 1e-10;
   g2_solve g2_s(eps,&param,verbose);
   bool do1;
   double u1;
@@ -568,17 +577,15 @@ double fct2(double x, double beta, bool log_flag,
     double upper = u2;
     u1_pair = boost::math::tools::toms748_solve(g2_s, lower, upper, tol, max_iter);
     u1=(u1_pair.first+u1_pair.second)/2;
-    if (verbose){
+    if (verbose>=2){
       double g2_u1 = u1;
       g2(&g2_u1,1,&param);
       Rcout << "u1 = " << u1
             << ", g2(u1) = " << g2_u1 << std::endl;
-      Rcout << "Region 1 is "  << M_PI_2*(u1+u0) << " long. " << std::endl
+      Rcout << "Region 1 is "  << M_PI_2*(u1+1) << " long. " << std::endl
             << "Region 2 is " << M_PI_2*(u2-u1) << " long. " << std::endl;
   }
   }
-  double g2_p1= 1;
-  g2(&g2_p1,1,&param);
   bool do4;
   double u3;
   if ((do4 = g2_u2 > eps && g2_p1 < eps)) {
@@ -588,7 +595,7 @@ double fct2(double x, double beta, bool log_flag,
     double upper = 1;
     u3_pair = boost::math::tools::toms748_solve(g2_s, lower, upper, tol, max_iter);
     u3=(u3_pair.first+u3_pair.second)/2;
-    if (verbose){
+    if (verbose>=2){
       double g2_u3 = u3;
       g2(&g2_u3,1,&param);
       Rcout << "u3 = " << u3
@@ -673,7 +680,7 @@ double sdstable1(double x, double alpha, double beta, int log_flag,
     double zeta = -betan;
     double theta0 = std::min(std::max(-M_PI_2, atan(betan)/alpha), M_PI_2);
     if (verbose)
-      Rcout << "dstable(., alpha=" << alpha <<  ", beta=" << beta
+      Rcout << std::endl << "dstable(., alpha=" << alpha <<  ", beta=" << beta
                 << ",..): --> theta0 = " << theta0
                 <<", zeta = " << zeta << std::endl;
     if (zeta_tol == 0) {
@@ -686,24 +693,30 @@ double sdstable1(double x, double alpha, double beta, int log_flag,
         if (verbose)
           Rcout << " --> zeta.tol = " << zeta_tol << std::endl;
       }
-      if (verbose)
-          Rcout << std::endl;
       ret = fct1(x, zeta, alpha, beta, theta0,
                  log_flag, tol, subdivisions,
                  zeta_tol, verbose);
   } // alpha != 1
   else {
-      if (x >= 0) {
-        ret = fct2(x, beta, log_flag, tol,
-             subdivisions, verbose);
-      }
-      else {
-        ret = fct2(-x, -beta, log_flag , tol,
-             subdivisions, verbose);}
+    if (verbose)
+      Rcout << std::endl << "dstable(., alpha=" << alpha <<  ", beta=" << beta
+            << ",..):" << std::endl;
+    if (x >= 0) {
+      ret = fct2(x, beta, log_flag, tol,
+           subdivisions, verbose);
+    }
+    else {
+      ret = fct2(-x, -beta, log_flag , tol,
+           subdivisions, verbose);}
 
   } //alpha == 1
-  if (ret == (log_flag ? R_NegInf : 0))
+  if (ret == (log_flag ? R_NegInf : 0)){
      ret = dPareto(x, alpha, beta, log_flag);
+     if (verbose)
+       Rcout<< "dstable1(x = " << x << "alpha = " << alpha
+            << ", beta = " << beta << ", log = " << log_flag << ")" << std::endl
+            << "fct1 or fct2 returned 0, using dPareto = " << ret << std::endl;
+  }
   return ret;
 
 } //sdstaple1

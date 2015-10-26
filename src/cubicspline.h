@@ -118,12 +118,3 @@ public:
   }
 };
 
-// [[Rcpp::export]]
-NumericVector cubic_spline(NumericVector x, NumericVector x_knots, NumericVector y_knots,
-                          bool isclamped, NumericVector deriv) {
-  cubicspline tst(x_knots,y_knots,isclamped,deriv);
-  tst.get_knots();
-  tst.get_coefs();
-  return wrap(tst(x));
-}
-

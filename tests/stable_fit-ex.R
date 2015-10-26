@@ -57,7 +57,7 @@ graph_stable_fit<-function(l_in,subhead=""){
 
 require(stablecpp)
 
-alphas=c(.1,.5,1,1.5,1.99,2)
+alphas=c(.1,.5,1,1.5,2)
 betas<-c(-1,-.5,0,.5,1)
 for (alpha in alphas){
   for (beta in betas){
@@ -70,11 +70,13 @@ for (alpha in alphas){
     q_skew<-(q[5]+q[1]-2*q[3])/(q[5]-q[1])
     q_scale<-q[4]-q[2]
     q_location<-q[3]
+    convergence=NA
     input_parameters<-data.frame(alpha=alpha,beta=beta,gamma=1,delta=0,pm=0,
                                  two_ll_n=2*sum(dstable.quick(xtst,alpha,beta,log=T))/n,
-                                 n=n,method="input",q_kurt,q_skew,q_scale,q_location)
+                                 n=n,method="input",q_kurt,q_skew,q_scale,q_location,
+                                 convergence)
     row.names(input_parameters)<-NULL
-    sf_out<-stable_fit(xtst,type="mle")
+    sf_out<-stable_fit(xtst,type="q_mle")
     print(rbind(input_parameters,sf_out$parameters))
   }
 }
