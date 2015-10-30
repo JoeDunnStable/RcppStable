@@ -15,7 +15,6 @@ static const double Machine_eps = std::numeric_limits<double>::epsilon();
 static const double alpha_small_dstable = 1e-17;
 static const double large_exp_arg = 708.39641853226407875e0;
 
-/* The input parameters for g other than theta */
 integr_fn g1;
 
 double g(double th, g_param* param) {
@@ -173,6 +172,7 @@ double fct1(double x, double zeta,
   // the real check should be about the feasibility of g() below, or its integration
 
   bool smallAlpha = alpha < alpha_small_dstable;
+
   if (x < zeta) {
     theta0 = -theta0; // see Nolan(1997), Thm.1 (c)
     if (smallAlpha) {
@@ -218,6 +218,7 @@ double fct1(double x, double zeta,
       return 0;
   }
   double g_;
+  /*
   if (alpha >= 1)
     g_=g(-theta0+1e-06*fabs(theta0),&param);
   else
@@ -230,6 +231,7 @@ double fct1(double x, double zeta,
       return f_zeta;
     }
   }
+  */
   g_=g(M_PI_2,&param);
   if (verbose >=2)
     Rcout << std::endl
@@ -239,6 +241,8 @@ double fct1(double x, double zeta,
   double g1_th2;
   if ((alpha >= 1 && !isnan(g_) && g_ > 1) ||
       (alpha < 1 && !isnan(g_) && g_ < 1)) {
+    if (verbose)
+      Rcout << "g doesn't cross 1, setting theta 2 to pi/2 - 1e06" << std::endl;
     theta2 = M_PI_2-1e-06;
     g1_th2 = theta2;
     g1(&g1_th2,1,&param);
@@ -246,6 +250,8 @@ double fct1(double x, double zeta,
   else {
     if ((alpha < 1 && g_mth0 > 1) ||
         (alpha >= 1 && g_mth0 < 1)){
+      if (verbose)
+        Rcout << "g doesn't cross 1, setting theta 2 to -theta0 + 1e06" << std::endl;
       theta2 = -theta0  +1e-06;
       g1_th2=theta2;
       g1(&g1_th2,1,&param);
