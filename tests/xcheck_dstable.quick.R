@@ -11,8 +11,8 @@ compare_dstable.quick<-function(alphas,betas) {
     write(a,"")
     for (b in betas) {
       xs<-stablecpp::qstable((.5+0:1999)/2000,a,b,pm=0)
-      v_quick<-stablecpp::dstable.quick(xs,a,b,pm=0,zeta.tol=5e-5,log=T)
-      v_exact<-stablecpp::dstable(xs,a,b,pm=0,zeta.tol=5e-5,log=T)
+      v_quick<-stablecpp::dstable.quick(xs,a,b,pm=0,log=T)
+      v_exact<-stablecpp::dstable(xs,a,b,pm=0,log=T)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       x=xs,v_quick=v_quick,v_exact=v_exact))
       cat(sprintf("alpha = %6g, beta = %6g, loglik_quick = %20g, loglik_exact = %20g\n",

@@ -231,7 +231,7 @@ chk_near_zeta<-function(alpha,beta){
   zet <- zeta(alpha= alpha, beta= beta)
   ## here, we must have larger zeta.tol: = 5e-5 is fine; now using "automatic" default
   x<-max(abs(zet),1)*seq(-5e-4,5e-4,length.out=nc+if(nc%%2==0) 1 else 0)
-  df<-data.frame(x=x,y=dstable(zet+x, alpha= alpha, beta= beta,zeta.tol=5e-5),fnct="dstable")
+  df<-data.frame(x=x,y=dstable(zet+x, alpha= alpha, beta= beta),fnct="dstable")
   if (abs(zet)>1e4)
     df<-rbind(df,data.frame(x=x,y=dPareto(zet+x, alpha= alpha, beta= beta),fnct="dPareto"))
   z.txt <- bquote(paste(x == zeta(.), phantom() == .(signif(zet,6))))
@@ -282,6 +282,7 @@ chkUnimodal <- function(x) {
 	      (n2 <- n %/% 2) >= 2)
     if(is.unsorted(x[seq_len(n2)])) warning("first part is *not* increasing")
     if(is.unsorted(x[n:(n2+1)]))    warning("seconds part is *not* decreasing")
+    warnings()
     invisible(x)
 }
 
@@ -298,13 +299,13 @@ dstCurve <- function(alpha, beta, log=TRUE, NEG=FALSE,
   x<-exp(seq(from=log(from),to=log(to),length.out=n))
   log_flag<-if (log) "TRUE" else "FALSE"
   if(NEG) {
-    df<-rbind(data.frame(x=x,y=dstable(-x, alpha=alpha, beta=beta, log=log),fnct=rep("dstable",nc)),
+    df<<-rbind(data.frame(x=x,y=dstable(-x, alpha=alpha, beta=beta, log=log),fnct=rep("dstable",nc)),
              data.frame(x=x,y=dPareto(-x, alpha=alpha, beta=beta, log=log),fnct=rep("dPareto",nc)))
     qplot(x=x,y=y, data=df,geom="line", color=fnct, log=cLog,
           main=bquote(dstable(-x, alpha == .(alpha), beta == .(beta), log == .(log_flag))),
           ylab="f(x)", ...)
   } else {
-    df<-rbind(data.frame(x=x,y=dstable(x, alpha=alpha, beta=beta, log=log),fnct=rep("dstable",nc)),
+    df<<-rbind(data.frame(x=x,y=dstable(x, alpha=alpha, beta=beta, log=log),fnct=rep("dstable",nc)),
              data.frame(x=x,y=dPareto(x, alpha=alpha, beta=beta, log=log),fnct=rep("dPareto",nc)))
     qplot(x=x,y=y, data=df, geom="line", color=fnct, log=cLog,
           main=bquote(dstable(x, alpha == .(alpha), beta == .(beta), log == .(log_flag))),
@@ -312,27 +313,38 @@ dstCurve <- function(alpha, beta, log=TRUE, NEG=FALSE,
   }
 }
 
-## (was *S.L.O.W.* on [2010-03-28] !)
-dstCurve(alpha = 1.01, beta = 0.3, NEG=TRUE,
-	      from=1e10, to=1e20, cLog="x", ylim = c(-100, -45))
+## dstable and dPareto are slightly different at this scale
+dstCurve(alpha = 1.01, beta = 0.3, NEG=TRUE, log=FALSE, from=1e10, to=1e40 ,cLog="xy")
+dstCurve(alpha = 1.01, beta = 0.3, NEG=FALSE, log=FALSE, from=1e10, to=1e40 ,cLog="xy")
 ## zoom in:
-dstCurve(alpha = 1.01, beta = 0.3,from=.1e13,to= 9e13, ylim = c(-80, -55))
+dstCurve(alpha = 1.01, beta = 0.3, NEG=TRUE, log=FALSE, from=1e15,to= 1e16,cLog="xy")
+dstCurve(alpha = 1.01, beta = 0.3, NEG=TRUE, log=FALSE, from=1e39,to= 1e40,cLog="xy")
+dstCurve(alpha = 1.01, beta = 0.3, NEG=FALSE, log=FALSE, from=1e15,to= 1e16,cLog="xy")
+dstCurve(alpha = 1.01, beta = 0.3, NEG=FALSE, log=FALSE, from=1e39,to= 1e40,cLog="xy")
 showProc.time()
 
-d <- dstable(xLrg, alpha = 1.001, beta = -0.9) # >= 50 warnings
-try( chkUnimodal(d) ) # FIXME
-## look at the problem:
-dstCurve(alpha = 1.001, beta = -0.9, log=FALSE, NEG=TRUE,  1e10, 1e20, cLog="xy")
+d <- dstable(xLrg, alpha = 1.001, beta = -0.9) # No warnings (had over 50)
+chkUnimodal(d)
+## look at the former localtion of the problem
+dstCurve(alpha = 1.001, beta = -0.9, log=FALSE, NEG=TRUE,  1e10, 1e40, cLog="xy")
 ## and at the right tail, too:
-dstCurve(alpha = 1.001, beta = -0.9, log=FALSE, NEG=FALSE, 1000, 1e17, cLog="xy")
+dstCurve(alpha = 1.001, beta = -0.9, log=FALSE, NEG=FALSE, 1e10, 1e40, cLog="xy")
 
 d <- dstable(xLrg, alpha = 1. ,	  beta = 0.3 ); chkUnimodal(d) # "ok" now
-d <- dstable(xLrg, alpha = 0.9,	  beta = 0.3 ) # 10 warnings (had 11)
-try( chkUnimodal(d) ) # FIXME
-d <- dstable(xLrg, alpha = 0.5,	  beta = 0.3 ) # 19 warnings (had 22)
+d <- dstable(xLrg, alpha = 0.9,	  beta = 0.3 ) # No warnings (had 11)
 chkUnimodal(d)
-d <- dstable(xLrg, alpha = 0.1,	  beta = 0.3 ) # 26 warnings (had 21)
+d <- dstable(xLrg, alpha = 0.5,	  beta = 0.3 ) # No warnings (had 22)
 chkUnimodal(d)
+d <- dstable(xLrg, alpha = 0.1,	  beta = 0.3 ) # Over 50 warnings (had 21)
+chkUnimodal(d)
+## look at the problem:
+dstCurve(alpha = .1, beta = .3, log=FALSE, NEG=TRUE,  1e10, 1e40, cLog="xy")
+## Zoom in
+dstCurve(alpha = .1, beta = .3, log=FALSE, NEG=TRUE,  1e39, 1e40, cLog="xy")
+## and at the right tail, too:
+dstCurve(alpha = .1, beta = .3, log=FALSE, NEG=FALSE, 1e10, 1e40, cLog="xy")
+## Zoom in
+dstCurve(alpha = .1, beta = .3, log=FALSE, NEG=FALSE,  1e39, 1e40, cLog="xy")
 
 showProc.time()
 
@@ -352,7 +364,7 @@ require(plyr)
 ep <- 2^-(1:54)## beta := 1 - ep ---> 1  {NB: 1 - 2^-54 == 1  numerically}
 alph.s <- (1:32)/16   # in (0, 2]
 df<-expand.grid(alpha=alph.s,ep=ep)
-df_b1<-ddply(df,.(alpha,ep),function(df) data.frame(x=0:10,y=dstable(0:10,df$alpha,1-df$ep,zeta.tol=5e-5)))
+df_b1<-ddply(df,.(alpha,ep),function(df) {data.frame(x=0:10,y=dstable(0:10,df$alpha,1-df$ep))})
 print(summary(df_b1$y))
 r.b1 <- range(df_b1$y)
 stopifnot(0 < r.b1[1], r.b1[2] < 0.35)

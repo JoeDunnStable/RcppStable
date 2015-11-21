@@ -68,7 +68,7 @@ vplayout<-function(x,y)
 
 chk.pd.stable <- function(alpha, beta, xmin=NA, xmax=NA,
 			  n = 256, do.plot=TRUE,
-			  comp.tol = 1e-13, eq.tol = 1e-3)
+			  comp.tol = 1e-13, eq.tol = 1e-10)
 {
     stopifnot(n >= 20)
     if(is.na(xmin)) xmin <- qstable(0.01, alpha, beta)
@@ -76,33 +76,33 @@ chk.pd.stable <- function(alpha, beta, xmin=NA, xmax=NA,
     dx <- ceiling(1024*grDevices::extendrange(r = c(xmin, xmax), f = 0.01))/1024
     h <- diff(dx)/n
     x <- seq(dx[1], dx[2], by = h)
-    fx <- dstable(x, alpha=alpha, beta=beta, tol=  comp.tol)
+    int_dstable<-function(i) {
+      integrate(dstable,lower=x[i-1],upper=x[i],alpha=alpha,beta=beta,tol=comp.tol)$value
+    }
     Fx <- pstable(x, alpha=alpha, beta=beta, tol=2*comp.tol)
-    i.ev <- (i <- seq_along(x))[i %% 2 == 0 & i >= max(n/10, 16)]
-    ## integrate from x[1] up to x[i]	(where i is even);
+    ## integrate from x[1] up to x[i]
     ## the exact value will be F(x[i]) - F(x[1]) == Fx[i] - Fx[1]
-    Fx. <- vapply(lapply(i.ev, seq_len),
-		  function(ii) intSimps(fx[ii], h), 0)
-    a.eq <- all.equal(Fx., Fx[i.ev] - Fx[1], tol = eq.tol)
+    Fx.<- cumsum(c(0,vapply(seq_along(x)[-1],int_dstable,0.)))
+    a.eq <- all.equal(Fx., Fx - Fx[1], tol = eq.tol)
     if(do.plot) {
       grid.newpage()
       pushViewport(viewport(layout=grid.layout(2,1)))
     	## Show the fit
       df<-rbind(data.frame(x=x,y=Fx-Fx[1],fnct="pstable"),
-                data.frame(x=x[i.ev],y=Fx.,fnct="int(dstable"))
+                data.frame(x=x,y=Fx.,fnct="int(dstable"))
       old<-theme_update(legend.position=c(1,0),legend.justification=c(1,0))
     	print(qplot(x=x, y=y, color=fnct,data=df,geom="line",
     	      main=bquote(pstable(x, alpha == .(alpha), beta == .(beta))),
     	      ylab=sprintf("Integral from %g to x",df$x[1])),vp=vplayout(1,1))
     	theme_set(old)
     	## show the "residual", i.e., the relative error
-      print(qplot(x=x[i.ev], y=1- Fx./(Fx[i.ev] - Fx[1]),
+      print(qplot(x=x, y=1- Fx./(Fx - Fx[1]),
     	     geom="line", xlim = range(x),
     	     main="Relative error of pstable vs integral of dstable"),vp=vplayout(2,1))
     }
 
     if(!isTRUE(a.eq)) stop(a.eq)
-    invisible(list(x=x, f=fx, F=Fx, i. = i.ev, F.appr. = Fx.))
+    invisible(list(x=x, F=Fx, i. = seq_along(x), F.appr. = Fx.))
 }
 
 op <- par(mfrow=2:1, mar = .1+c(3,3,1,1), mgp=c(1.5, 0.6,0))
@@ -153,14 +153,16 @@ f2 <- diff(diff(px))
 stopifnot(f2[x[-c(1,n)] < 0] > 0,
 	  f2[x[-c(1,n)] > 0] < 0)
 x<-seq(-6,50,length.out=500)
-qplot(x=x,y=dstable(x, 1., 0.99), geom="line", log="y")# used to br "uneven" (x < 0); 50 warnings
+qplot(x=x,y=dstable(x, 1., 0.99), geom="line", log="y",
+      main=bquote(dstable(x, alpha == 1., beta == .99)), ylab="y")# used to br "uneven" (x < 0); 50 warnings
 x<-seq(-10, 30, length.out=500)
-qplot(x=x,y=dstable(x, 1.001, 0.95), geom="line",log="y")# much better
+qplot(x=x,y=dstable(x, 1.001, 0.95), geom="line",log="y",
+      main=bquote(dstable(x, alpha == 1.001, beta == .95)), ylab="y")# much better
 
 showProc.time() #
 
-c5 <- chk.pd.stable(1.,	   0.99,  -6, 50)# -> uniroot
-c6 <- chk.pd.stable(1.001, 0.95, -10, 30)# -> uniroot; 2nd plot *clearly* shows problem
+c5 <- chk.pd.stable(1.,	   0.99,  -6, 50)
+c6 <- chk.pd.stable(1.001, 0.95, -10, 30)
 with(c5, all.equal(F.appr., F[i.] - F[1], tol = 0)) # .00058 on 64-Lnx
 with(c6, all.equal(F.appr., F[i.] - F[1], tol = 0)) # 2.611e-5 on 64-Lnx
 
@@ -224,7 +226,6 @@ if(show.Acc) { ## want to see accuracies, do not stop "quickly"
         format(as.numeric(relErr(tt, cc)), digits = 4, width = 8)
 }
 ##        pstable() is now as accurate as dstable()
-##        even though the integration in dstable() is more delicate in general
 
 pTOL <- 1e-15  # typically see relErr of  1 to 2 e-15
 dTOL <- 1e-14 # typically see relErr of  1.3...3.9 e-15

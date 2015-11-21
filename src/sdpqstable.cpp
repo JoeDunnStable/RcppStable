@@ -7,8 +7,9 @@ vec sdstable(vec x, double alpha, double beta, int log_flag,
              double tol, double zeta_tol, int subdivisions, int verbose){
   vec ret(x.n_elem);
   uword i;
+  g_class param(alpha,beta);
   for (i=0; i<x.n_elem; i++)
-    ret(i)=sdstable1(x(i), alpha, beta, log_flag, tol, zeta_tol, subdivisions, verbose);
+    ret(i)=param.sdstable1(x(i), log_flag, tol, zeta_tol, subdivisions, verbose);
   return ret;
 }
 
@@ -26,8 +27,9 @@ vec spstable(vec z, double alpha, double beta, int lower_tail, int log_p,
                        double dbltol, int subdivisions, int verbose) {
   vec ret(z.n_elem);
   uword i;
+  g_class param(alpha,beta);
   for (i=0; i<z.n_elem; i++)
-    ret(i)=spstable1(z(i), alpha, beta, lower_tail, log_p,
+    ret(i)=param.spstable1(z(i), lower_tail, log_p,
         dbltol, subdivisions, verbose);
   return ret;
 }
@@ -65,26 +67,19 @@ NumericVector sqstable(NumericVector p, double alpha, double beta, int lower_tai
 // Functor passed to brent_find_minima to find mode of sdstable
 class sdstable_functor {
 private:
-  double alpha;
-  double beta;
+  g_class param;
   int log_flag;
   double tol;
   double zeta_tol;
   int subdivisions;
   int verbose;
 public:
-  sdstable_functor(double alpha_in, double beta_in, int verbose_in) {
-    alpha=alpha_in;
-    beta=beta_in;
-    verbose=verbose_in;
-    log_flag=0;
-    tol=64*std::numeric_limits<double>::epsilon();
-    zeta_tol=0.;
-    subdivisions=1000;
-  }
+  sdstable_functor(double alpha, double beta, int verbose) :
+    param(alpha,beta), verbose(verbose), log_flag(0),
+    tol(64*std::numeric_limits<double>::epsilon()), zeta_tol(0), subdivisions(1000){}
   double operator()(const double x) {
     // the negative is because we're handing this to a minimum finding routine.
-    double ret=-sdstable1(x,alpha,beta,log_flag,tol,zeta_tol,subdivisions,verbose);
+    double ret=-param.sdstable1(x,log_flag,tol,zeta_tol,subdivisions,verbose);
     if (verbose >=3)
       Rcout << "x = " << x
             << ", dstable(x) = " << -ret << std::endl;
@@ -187,7 +182,9 @@ NumericVector sdstable_quick(NumericVector x, double alpha, double beta,
         double x_high_break2=x_mode+10;
         vec x_high_inner = join_cols(linspace(x_mode+.1,x_high_break1,30),
                         linspace(x_high_break1,x_high_break2,50).tail_rows(49));
-        vec pt_high_outer = linspace(Rf_pt(x_high_break2,alpha,1,0),1-.000001,10).tail_rows(9);
+        double pt_high_break2=Rf_pt(x_high_break2,alpha,1,0);
+        vec pt_high_outer = linspace(pt_high_break2,1-.000001,
+                                     fmax(10,500*(1-pt_high_break2))).tail_rows(9);
         vec pt_high_inner(pt(x_high_inner,alpha));
         vec pt_knot_high=join_cols(pt_high_inner,pt_high_outer);
         vec x_high_outer(qt(pt_high_outer,alpha));
@@ -209,7 +206,9 @@ NumericVector sdstable_quick(NumericVector x, double alpha, double beta,
         double x_low_break1 = x_mode-1;
         vec x_low_inner=join_cols(linspace(x_low_break2,x_low_break1,50),
                       linspace(x_low_break1, x_mode-.1,30).tail_rows(29));
-        vec pt_low_outer=linspace(0.000001,Rf_pt(x_low_break2,alpha,1,0),10).head_rows(9);
+        double pt_low_break_2=Rf_pt(x_low_break2,alpha,1,0);
+        vec pt_low_outer=linspace(0.000001,pt_low_break_2,
+                                  fmax(10,500*pt_low_break_2)).head_rows(9);
         vec pt_low_inner(pt(x_low_inner,alpha));
         vec pt_knot_low = join_cols(pt_low_outer,pt_low_inner);
         vec x_low_outer(qt(pt_low_outer,alpha));

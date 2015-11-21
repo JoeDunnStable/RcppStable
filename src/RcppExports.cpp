@@ -6,16 +6,17 @@
 
 using namespace Rcpp;
 
-// ga1_p_public
-NumericVector ga1_p_public(double u, double x, double beta);
-RcppExport SEXP stablecpp_ga1_p_public(SEXP uSEXP, SEXP xSEXP, SEXP betaSEXP) {
+// test_g
+double test_g(double th, double x, double alpha, double beta);
+RcppExport SEXP stablecpp_test_g(SEXP thSEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< double >::type u(uSEXP);
+    Rcpp::traits::input_parameter< double >::type th(thSEXP);
     Rcpp::traits::input_parameter< double >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    __result = Rcpp::wrap(ga1_p_public(u, x, beta));
+    __result = Rcpp::wrap(test_g(th, x, alpha, beta));
     return __result;
 END_RCPP
 }
