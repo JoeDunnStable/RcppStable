@@ -1,6 +1,7 @@
 require("stablecpp")
 require("ggplot2")
 require("plyr")
+
 dPareto <- stablecpp:::dPareto
 
 source(system.file("test-tools-1.R", package = "Matrix"), keep.source=interactive())
@@ -229,15 +230,16 @@ stopifnot(f1 > 0, f2 > 0)
 ## these all work (luck):
 chk_near_zeta<-function(alpha,beta){
   zet <- zeta(alpha= alpha, beta= beta)
+  d0<-dstable(zet,alpha,beta)
   ## here, we must have larger zeta.tol: = 5e-5 is fine; now using "automatic" default
-  x<-max(abs(zet),1)*seq(-5e-4,5e-4,length.out=nc+if(nc%%2==0) 1 else 0)
+  x<-max(abs(zet),1e-8/abs(1-alpha))*seq(-5e-4,5e-4,length.out=nc+if(nc%%2==0) 1 else 0)
   df<-data.frame(x=x,y=dstable(zet+x, alpha= alpha, beta= beta),fnct="dstable")
   if (abs(zet)>1e4)
     df<-rbind(df,data.frame(x=x,y=dPareto(zet+x, alpha= alpha, beta= beta),fnct="dPareto"))
   z.txt <- bquote(paste(x == zeta(.), phantom() == .(signif(zet,6))))
-  show(qplot(x=x,y=y, geom="line",data=df,color=fnct,
+  show(qplot(x=x,y=y, geom="line",data=df,color=fnct,ylim=c(0,max(df$y)),
         main=bquote(dstable(x+zeta(alpha,beta), alpha == .(alpha), beta == .(beta)))) +
-        geom_hline(aes(yintercept=dstable(zet,alpha,beta)),color="green")+
+        geom_hline(aes(yintercept=d0),color="green")+
         geom_vline(aes(xintercept=0), color="pink")+
         geom_text(aes(x=0,y=max(df$y)-.1*(max(df$y)-min(df$y)),label=deparse(z.txt)), alpha=1,parse=T,hjust=0, color="pink"))
   df
@@ -247,6 +249,8 @@ df<-chk_near_zeta(1.00001,-.8)
 stopifnot({ rr <- range(df$y)
 	    2.1e-10 < rr & rr < 2.3e-10 })
 df<-chk_near_zeta(1.00001,0)
+
+df<-chk_near_zeta(.1,0)
 
 showProc.time()
 
@@ -280,9 +284,8 @@ chkUnimodal <- function(x) {
     ## x = c(x1, x2)  and  x1 is *increasing*  and x2 is *decreasing*
     stopifnot((n <- length(x)) %% 2 == 0,
 	      (n2 <- n %/% 2) >= 2)
-    if(is.unsorted(x[seq_len(n2)])) warning("first part is *not* increasing")
-    if(is.unsorted(x[n:(n2+1)]))    warning("seconds part is *not* decreasing")
-    warnings()
+    if(is.unsorted(x[seq_len(n2)])) warning("first part is *not* increasing", immediate.=T)
+    if(is.unsorted(x[n:(n2+1)]))    warning("seconds part is *not* decreasing", immediate.=T)
     invisible(x)
 }
 
@@ -364,7 +367,7 @@ require(plyr)
 ep <- 2^-(1:54)## beta := 1 - ep ---> 1  {NB: 1 - 2^-54 == 1  numerically}
 alph.s <- (1:32)/16   # in (0, 2]
 df<-expand.grid(alpha=alph.s,ep=ep)
-df_b1<-ddply(df,.(alpha,ep),function(df) {data.frame(x=0:10,y=dstable(0:10,df$alpha,1-df$ep))})
+df_b1<-ddply(df,.(alpha,ep),function(df){data.frame(x=0:10,y=dstable(0:10,df$alpha,1-df$ep))})
 print(summary(df_b1$y))
 r.b1 <- range(df_b1$y)
 stopifnot(0 < r.b1[1], r.b1[2] < 0.35)

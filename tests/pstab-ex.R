@@ -134,8 +134,8 @@ pushViewport(viewport(layout=grid.layout(2,1)))
 x<-seq(-6,9,length.out=101)
 print(qplot(x=x, y=pstable(x, alpha=1, beta= .01), geom="line",ylim=0:1,
       main=bquote(pstable(x, alpha == 1, beta == .01)))+
-      geom_hline(aes(yintercept=0:1),line_type=3, color="grey")+
-      geom_vline(aes(xintercept=0),line_type=3, color="grey"),vp=vplayout(1,1))
+      geom_hline(aes(yintercept=0:1),linetype=3, color="grey")+
+      geom_vline(aes(xintercept=0),linetype=3, color="grey"),vp=vplayout(1,1))
 n <- length(x <- seq(-6,8, by = 1/16))
 px <- pstable(x, alpha=1, beta= .01)
 ## now take approximation derivative by difference ratio:

@@ -1,12 +1,26 @@
 /* If using sourceCpp run Sys.setenv("PKG_CXXFLAGS"="-I /opt/local/include") */
 
-#include <Rcpp.h>
 #include "Stable.h"
 #include <iostream>
 #include <boost/math/tools/toms748_solve.hpp>
-#include <R_ext/Applic.h> // For integr_fn and Rdqags
+#include "dqagp_v2.h"
 
 static const double Machine_eps = std::numeric_limits<double>::epsilon();
+static const double PosInf = std::numeric_limits<double>::infinity();
+static const double NegInf = -PosInf;
+
+template<typename T>
+class sort_data {
+public:
+  T a;
+  int index;
+  sort_data(T a, int index) : a(a), index(index){}
+};
+
+template<typename T>
+bool sd_lt(const sort_data<T> &lhs,const sort_data<T>& rhs) {
+  return lhs.a < rhs.a;
+}
 
 // Function to integrate: pstable(..)= f(..) = c2 * \int_{-\theta_0}^{\pi/2} g1_p(u) du
 void exp_m_g(double * th, int n, void * ext) {
@@ -20,58 +34,129 @@ void exp_m_g(double * th, int n, void * ext) {
   }
 }
 
+// Function to integrate: pstable(..)= f(..) = c2 * \int_{-\theta_0}^{\pi/2} g1_p(u) du
+void one_m_exp_m_g(double * th, int n, void * ext) {
+  g_class * param = (g_class *) ext;
+  int i;
+
+  for (i=0; i<n; i++){
+    double g_th = param->g(th[i]);
+    // g1_p :=  exp(-g(.))
+    th[i] = -expm1(-g_th);
+  }
+}
+
 class Int_exp_m_g {
 private:
   g_class *param;
   double abs_tol;
   double rel_tol;
-  int subdivisions;
+  int limit;
   int verbose;
   static std::string msgs[];
 
 public:
   Int_exp_m_g(g_class* param, double tol, int subdivisions, int verbose) :
-    param(param), abs_tol(tol), rel_tol(tol), subdivisions(subdivisions), verbose(verbose) {};
+    param(param), abs_tol(tol), rel_tol(tol), limit(subdivisions), verbose(verbose) {};
 
   double result;
   double abserr;
   int neval;
   int ier;
-  double operator() (double lower, double upper) {
-    int lenw = 4*subdivisions;
+  double operator() (double lower, double upper, int npts2, double pts_in[]) {
+    std::array<double, 100> points;
+    for (int i=0; i<npts2-2; i++)
+      points[i]=pts_in[i];
+    double result;
+    double abserr;
+    int neval;
+    int ier;
+    std::array<subinterval, LIMIT> subs;
     int last;
-    int iwork[subdivisions];
-    double work[lenw];
 
-    if (verbose>=4)
+    if (verbose>=4){
       Rcout << std::endl
-                << "Rdqags(g1_p" << "with param.alpha = " << param->alpha
-                << ", param.beta = " << param->beta
-                << ", param.cat0 = " << param->cat0
-                << ", param.x_m_zet = " << param->x_m_zet << ", " << std::endl
-                << "lower = " << lower
-                << ", upper = " << upper << ", " <<std::endl
-                << "abs_tol " << abs_tol
-                << ", rel_tol " << rel_tol << std::endl;
+            << "dqagpe(g_exp_m_g, " << "with param" << *param
+            << "lower = " << lower
+            << ", upper = " << upper << ", " <<std::endl;
+      for (int i=0; i<npts2-2; i++)
+        Rcout << "points[" << i << "] = " << points[i] << std::endl;
+      Rcout << "abs_tol = " << abs_tol
+            << ", rel_tol = " << rel_tol << std::endl;
+    }
+    dqagpe_v2(exp_m_g, (void *) param, lower, upper, npts2, points, abs_tol, rel_tol, limit,
+              result, abserr, neval, ier,
+              subs, last);
 
-      Rdqags(exp_m_g, (void *) param, &lower, &upper, &abs_tol, &rel_tol,
-             &result, &abserr, &neval, &ier,
-             &subdivisions, &lenw, &last, iwork, work);
-             if (ier>0) {
-               if (ier<6){
-                 warning(msgs[ier]);
-               } else {
-                 stop(msgs[ier]);
-               }
-             }
-             if (verbose>=3)
-               Rcout << "Integral of exp_m_g from theta = " << lower
-                         << " to theta = " << upper
-                         << " = " << result
-                         << " with absolute error = " << abserr
-                         << ", subintervals = " << last << std::endl;
+    if (ier>0) {
+      if (ier<6){
+        warning(msgs[ier]);
+      } else {
+        stop(msgs[ier]);
+      }
+    }
+    if (verbose>=3){
+      if (ier > 0)
+        Rcout << msgs[ier] << ":" << std::endl;
+      Rcout << "Integral of g_exp_m_g from theta = " << lower
+            << " to theta = " << upper
+            << " = " << result
+            << ", with absolute error = " << abserr
+            << ", subintervals = " << last << std::endl;
+    }
+    if (verbose>=4){
+      std::vector<sort_data<double> > srt_a;
+      for (int i=0; i<last; i++) {
+        sort_data<double> elem(subs.at(i).a,i);
+        srt_a.push_back(elem);
+      }
+      std::sort(srt_a.begin(), srt_a.end(),sd_lt<double>);
 
-             return result;
+      std::vector<sort_data<double> > srt_eord;
+      for (int i=0; i<last; i++) {
+        sort_data<double> elem(subs.at(i).e,i);
+        srt_eord.push_back(elem);
+      }
+      std::sort(srt_eord.begin(), srt_eord.end(),sd_lt<double>);
+
+      std::vector<sort_data<int> > srt_iord;
+      for (int i=0; i<last; i++) {
+        sort_data<int> elem(srt_eord.at(i).index,last-1-i);
+        srt_iord.push_back(elem);
+      }
+      std::sort(srt_iord.begin(), srt_iord.end(),sd_lt<int>);
+
+      Rcout << " "
+            << std::setw(13) << std::right << "a"
+            << std::setw(13) << std::right << "b"
+            << std::setw(13) << std::right << "length"
+            << std::setw(13) << std::right << "r"
+            << std::setw(13) << std::right << "average"
+            << std::setw(13) << std::right << "e"
+            << std::setw(5) << std::right << "rank"
+            << std::setw(6) << std::right << "level" << std::endl;
+      for (int i=0; i<last;i++){
+        int j = srt_a[i].index;
+        bool ispt = i==0;
+        for (int ipt = 0; ipt<npts2-2; ipt++) {
+          ispt=ispt || subs.at(j).a==points.at(ipt);
+          if (ispt) break;
+        }
+        if (ispt)
+          Rcout << "*";
+        else
+          Rcout << " ";
+        Rcout << std::setw(13) << std::setprecision(5) << subs.at(j).a
+              << std::setw(13) << std::setprecision(5) << subs.at(j).b
+              << std::setw(13) << std::setprecision(5) << subs.at(j).b-subs.at(j).a
+              << std::setw(13) << std::setprecision(5) << subs.at(j).r
+              << std::setw(13) << std::setprecision(5) << subs.at(j).r/(subs.at(j).b-subs.at(j).a)
+              << std::setw(13) << std::setprecision(5) << subs.at(j).e
+              << std::setw(5) << srt_iord.at(j).index+1
+              << std::setw(6)  << subs.at(j).level << std::endl;
+      }
+    }
+    return result;
   };
 };
 
@@ -94,7 +179,7 @@ double g_class::integrate_exp_m_g(bool giveI, double dbltol, int subdivisions, i
 // as g() is montone, the integrand  exp(-g(.)) is too ==> maximum is at the boundary
 // however, integration can be inaccuracte when g(.) quickly jumps from Inf to 0
   double eps=1e-10;
-  double th_eps, th_1_m_eps, th1, th2;
+  double th_eps, th_1_m_eps;
   double exp_m_g_lo=0;
   exp_m_g(&exp_m_g_lo, 1, (void*)this);
   double exp_m_g_hi=th_max;
@@ -102,80 +187,53 @@ double g_class::integrate_exp_m_g(bool giveI, double dbltol, int subdivisions, i
   if (verbose)
     Rcout << "integrate_exp_m_g: exp(-g(0) = " << exp_m_g_lo << std::endl
           << ", exp(-g(" << th_max << ") = " << exp_m_g_hi << std::endl;
-  bool have_eps = FALSE, have_1_m_eps = FALSE;
-  bool do1=TRUE, do2=TRUE, do3=TRUE;
+  bool have_eps = false, have_1_m_eps = false;
   if ((exp_m_g_hi-eps)*(exp_m_g_lo-eps)<0){
-    g_solve g_s(-log(eps), this, verbose);
+    g_solve g_s(log(-log(eps)), this, verbose, true);
     lower = 0;
     upper = th_max;
-    max_iter = 200;
+    max_iter = 1000;
     rel_eps_tolerance tol(1e-8);
     std::pair<double,double> ur;
     ur = boost::math::tools::toms748_solve(g_s, lower, upper, tol, max_iter);
     th_eps = (ur.first+ur.second)/2;
-    have_eps=TRUE;
+    have_eps=true;
     if(verbose)
-      Rcout << " exp(-g)(" << th_eps <<") = " << eps << ", iterations = " << max_iter << std::endl;
+      Rcout << " exp(-g)(" << th_eps <<") = " << exp(-g(th_eps)) << ", iterations = " << max_iter << std::endl;
   }
   if ((exp_m_g_hi-(1-eps))*(exp_m_g_lo-(1-eps))<0){
-    g_solve g_s(-log(1-eps), this, verbose);
+    g_solve g_s(log(-log(1-eps)), this, verbose, true);
     lower = (exp_m_g_lo==0) ? th_eps : 0;
     upper = (exp_m_g_hi==0) ? th_eps : th_max;
-    max_iter = 200;
+    max_iter = 1000;
     rel_eps_tolerance tol(1e-8);
     std::pair<double,double> ur;
     ur = boost::math::tools::toms748_solve(g_s, lower, upper, tol, max_iter);
     th_1_m_eps = (ur.first+ur.second)/2;
-    have_1_m_eps=TRUE;
+    have_1_m_eps=true;
     if(verbose)
       Rcout << "exp(-g)(" << th_1_m_eps <<") = " << 1-eps << ", iterations = " << max_iter << std::endl;
   }
+  double points[22];
+  int npts2 = 2;
   if (have_1_m_eps){
+    npts2 += 2;
     if (exp_m_g_hi==0) {
-      th1=th_1_m_eps;
-      th2=th_eps;
+      points[0]=th_1_m_eps;
+      points[1]=th_eps;
     } else {
-      th1=th_eps;
-      th2=th_1_m_eps;
+      points[0]=th_eps;
+      points[1]=th_1_m_eps;
     }
   } else if (have_eps){
-    if (exp_m_g_hi==0){
-      do1=FALSE;
-      th1=0;
-      th2=th_eps;
-    } else {
-      do3=FALSE;
-      th1=th_eps;
-      th2=th_max;
-    }
-  } else {
-    do1=FALSE;
-    do2=FALSE;
-    th2=0;
+    npts2 += 1;
+    points[0]=th_eps;
   }
   Int_exp_m_g int_exp_m_g(this, dbltol, subdivisions, verbose);
-  double r1, r2, r3;
-  double rerr = 0;
-  if (do1) {
-    r1=int_exp_m_g(0,th1);
-    rerr+=int_exp_m_g.abserr;
-  }
-  else
-    r1=0;
-  if (do2) {
-    r2=int_exp_m_g(th1,th2);
-    rerr+=int_exp_m_g.abserr;
-  } else
-    r2=0;
-  if (do3){
-    r3=int_exp_m_g(th2,th_max);
-    rerr+=int_exp_m_g.abserr;
-  } else
-    r3=0;
+  double r;
+  r=int_exp_m_g(0, th_max, npts2, points);
   if(verbose)
-    Rcout << "--> Int r1= " << r1 << std::endl
-          << "    Int r2= " << r2 << std::endl
-          << "    Int r3= " << r3 << std::endl;
+    Rcout << "--> Int r= " << r << std::endl;
   double c0, c1;
   if (alpha < 1){
     c0 = .5 - theta0/M_PI;
@@ -190,11 +248,11 @@ double g_class::integrate_exp_m_g(bool giveI, double dbltol, int subdivisions, i
   if(giveI) {
     // { ==> alpha > 1 ==> c0 = 1; c1 = -1/pi}
     // return (1 - F) = 1 - (1 -1/pi * r) = r/pi :
-    return -(r1+r2+r3)*c1;
+    return -(r)*c1;
   } else {
-    return c0 + c1* (r1+r2+r3);
+    return c0 + c1* (r);
   }
-} // {.FCT1}
+} // g_class::integrate_exp_m_g
 
 // ------------------------------------------------------------------------------
 
@@ -208,9 +266,9 @@ inline double retValue(double F, int useLower, int log_p) {
 double g_class::spstable1(double x,
                  int lower_tail, int log_p,
                  double tol, int subdivisions, int verbose) {
-  if(x==R_PosInf)
+  if(x==PosInf)
     return retValue(1, lower_tail, log_p);
-  else if (x==R_NegInf)
+  else if (x==NegInf)
     return retValue(0, lower_tail, log_p);
   set_x(x);
   if (alpha !=1) {
@@ -240,7 +298,7 @@ double g_class::spstable1(double x,
                  (x < zeta && !lower_tail));
     // FIXME: for alpha > 1 -- the following computes F1 = 1 -c3*r(x)
     // and suffers from cancellation when 1-F1 is used below:
-    bool giveI = !useLower && alpha > 1; // if TRUE, int_exp_m_g() return 1-F
+    bool giveI = !useLower && alpha > 1; // if true, int_exp_m_g() return 1-F
     double _F1 = integrate_exp_m_g(giveI, tol, subdivisions, verbose);
     if(giveI)
       return (log_p) ? log(_F1) : _F1;
@@ -256,241 +314,9 @@ double g_class::spstable1(double x,
 
     bool giveI = !useL && !log_p;
     if(giveI)
-      useL = TRUE;
+      useL = true;
     double _F2 = integrate_exp_m_g(giveI, tol, subdivisions, verbose);
     return retValue(_F2,useL,log_p);
   }
 }
 
-// Functor passed to toms748 solve to find q for unit stable distribution
-class p_solve {
-private:
-  double p;
-  g_class param;
-  int lower_tail;
-  int log_p;
-  int maxiter;
-  int verbose;
-  double integ_tol;
-  int subdivisions;
-
-public:
-  p_solve(double p, double alpha, double beta,
-          int lower_tail, int log_p,
-          double integ_tol, int subdivisions, int verbose) :
-    p(p), param(alpha, beta), lower_tail(lower_tail) , log_p(log_p),
-    verbose(verbose), integ_tol(integ_tol), subdivisions(subdivisions){}
-  double operator()(const double q) {
-    if (verbose)
-      Rcout << "Calling spstable with parmerters" << std::endl
-            << "q = " << q << ", alpha = " << param.alpha << ", beta = " << param.beta << std::endl
-               << "targeting p = " << p;
-
-    double r = param.spstable1(q, lower_tail, log_p,
-                     integ_tol, subdivisions, FALSE)-p;
-    if (verbose)
-      Rcout << ", Resulting delta = " << r << std::endl;
-    return r;
-  }
-};
-
-namespace boost { namespace math { namespace tools {
-
-template <class F, class T, class Tol, class Policy>
-std::pair<T, T> bracket_and_solve_root2(F f, const T& guess, T factor, bool rising, Tol tol, boost::uintmax_t& max_iter, const Policy& pol)
-{
-  BOOST_MATH_STD_USING
-  static const char* function = "bracket_and_solve_root2<%1%>";
-  //
-  // Set up inital brackets:
-  //
-  T a = guess;
-  T b = a;
-  T fa = f(a);
-  T fb = fa;
-  //
-  // Set up invocation count:
-  //
-  boost::uintmax_t count = max_iter - 1;
-
-  int step = 32;
-
-  if((fa < 0) == rising)
-  {
-    //
-    // Zero is to the right of b, so walk upwards
-    // until we find it:
-    //
-    while((boost::math::sign)(fb) == (boost::math::sign)(fa))
-    {
-      if(count == 0)
-        return boost::math::detail::pair_from_single(policies::raise_evaluation_error(function, "Unable to bracket root, last nearest value was %1%", b, pol));
-      //
-      // Heuristic: normally it's best not to increase the step sizes as we'll just end up
-      // with a really wide range to search for the root.  However, if the initial guess was *really*
-      // bad then we need to speed up the search otherwise we'll take forever if we're orders of
-      // magnitude out.  This happens most often if the guess is a small value (say 1) and the result
-      // we're looking for is close to std::numeric_limits<T>::min().
-      //
-      if((max_iter - count) % step == 0)
-      {
-        factor *= 2;
-        if(step > 1) step /= 2;
-      }
-      //
-      // Now go ahead and move our guess by "factor":
-      //
-      a = b;
-      fa = fb;
-      b += factor;
-      fb = f(b);
-      --count;
-      BOOST_MATH_INSTRUMENT_CODE("a = " << a << " b = " << b << " fa = " << fa << " fb = " << fb << " count = " << count);
-    }
-  }
-  else
-  {
-    //
-    // Zero is to the left of a, so walk downwards
-    // until we find it:
-    //
-    while((boost::math::sign)(fb) == (boost::math::sign)(fa))
-    {
-      if(count == 0)
-        return boost::math::detail::pair_from_single(policies::raise_evaluation_error(function, "Unable to bracket root, last nearest value was %1%", a, pol));
-      //
-      // Heuristic: normally it's best not to increase the step sizes as we'll just end up
-      // with a really wide range to search for the root.  However, if the initial guess was *really*
-      // bad then we need to speed up the search otherwise we'll take forever if we're orders of
-      // magnitude out.  This happens most often if the guess is a small value (say 1) and the result
-      // we're looking for is close to std::numeric_limits<T>::min().
-      //
-      if((max_iter - count) % step == 0)
-      {
-        factor *= 2;
-        if(step > 1) step /= 2;
-      }
-      //
-      // Now go ahead and move are guess by "factor":
-      //
-      b = a;
-      fb = fa;
-      a -= factor;
-      fa = f(a);
-      --count;
-      BOOST_MATH_INSTRUMENT_CODE("a = " << a << " b = " << b << " fa = " << fa << " fb = " << fb << " count = " << count);
-    }
-  }
-  max_iter -= count;
-  max_iter += 1;
-  std::pair<T, T> r = toms748_solve(
-    f, a, b, fa, fb,
-    tol, count, pol);
-  max_iter += count;
-  BOOST_MATH_INSTRUMENT_CODE("max_iter = " << max_iter << " count = " << count);
-  BOOST_MATH_LOG_COUNT(max_iter)
-    return r;
-}
-
-template <class F, class T, class Tol>
-inline std::pair<T, T> bracket_and_solve_root2(F f, const T& guess, const T& factor, bool rising, Tol tol, boost::uintmax_t& max_iter)
-{
-  return bracket_and_solve_root2(f, guess, factor, rising, tol, max_iter, policies::policy<>());
-}
-
-} // namespace tools
-} // namespace math
-} // namespace boost
-
-double q_guess(double p,double alpha,double beta,int lower_tail,int log_p);
-
-// Returns a quantile for the unit stable distribution.
-double sqstable1(double p, double alpha, double beta, int lower_tail, int log_p,
-                 double dbltol, double integ_tol, int subdivisions, int verbose) {
-
-  p_solve p_s(p, alpha, beta, lower_tail, log_p,
-              integ_tol, subdivisions,verbose);
-  std::pair<double,double> r;
-  rel_eps_tolerance tol(dbltol);
-  double guess = q_guess(p,alpha,beta,lower_tail,log_p);
-  if (verbose)
-    Rcout << "Guess for q " << guess << std::endl;
-  double factor = 2.;
-  bool rising = lower_tail;
-  boost::uintmax_t maxiter = 1000;
-  r=boost::math::tools::bracket_and_solve_root2(p_s,guess,factor,rising,tol,maxiter);
-  if (verbose)
-    Rcout << "r.first = " << r.first << ", r.second - " << r.second
-              << " in " << maxiter << " iterations" << std::endl;
-  return (r.first+r.second)/2;
-}
-
-//Functor which contains an approximation for stable p as a function of p for
-//student t with df=alpha
-class pt_solve {
-private:
-  double rplus;
-  double rminus;
-  double knot1;
-  double knot2;
-  double a0;
-  double a1;
-  double a2;
-  double a3;
-  double p;
-public:
-  pt_solve(double pp,double alpha,double beta, int lower_tail, int log_p){
-    double c_stable_plus = sin(M_PI_2*alpha )*tgamma(alpha)/M_PI*alpha*(1+beta);
-    double c_stable_minus = sin(M_PI_2*alpha )*tgamma(alpha)/M_PI*alpha*(1-beta);
-    double c_t=tgamma((alpha+1)/2)/(sqrt(alpha*M_PI)*tgamma(alpha/2))*pow(alpha,((alpha+1)/2));
-    rplus=c_stable_plus/c_t;
-    rminus=c_stable_minus/c_t;
-    // construct a cubic spline for the mapping of pt to pstable
-    knot1=(alpha<1 && beta==1) ? Rf_pt(-tan(M_PI_2*alpha),alpha,1,0) : .01;
-    knot2=(alpha<1 && beta==-1) ? Rf_pt(tan(M_PI_2*alpha),alpha,1,0) : .99;
-    double dk=knot2-knot1;
-    a0 = rminus*knot1;
-    a1 = rminus;
-    double b0 = 1-rplus*(1-knot2)-rminus*knot2;
-    double b1 = rplus-rminus;
-    a2 = -(dk*b1-3*b0)/(dk*dk);
-    a3 = (dk*b1-2*b0)/(dk*dk*dk);
-/*    Rcout << "rminus = " << rminus << ",knot1 = " << knot1 << std::endl
-          << "rplus = " << rplus << ", knot2 = " << knot2 << std::endl
-          << "a0 = " << a0 << ", a1 = " << a1 << ", a2 = " << a2 << ", a3 = " << a3 << std::endl;
-*/
-p = (log_p) ? exp(pp) : pp;
-    p = (lower_tail) ? p : 1-p;
-  }
-  double operator () (double pt) {
-    if (pt<=knot1)
-      return pt*rminus-p;
-    else if (pt>=knot2)
-      return 1-rplus*(1-pt)-p;
-    else {
-      double ptmk1 = pt-knot1;
-      double r = (((a3*ptmk1)+a2)*ptmk1+a1)*ptmk1+a0;
-      return r-p;
-      }
-  }
-
-};
-
-// [[Rcpp::export]]
-double guess_test(double p, double alpha, double beta, int lower_tail,int log_p){
-  pt_solve pt_s(0,alpha,beta,lower_tail,log_p);
-  return pt_s(p);
-}
-
-// [[Rcpp::export]]
-double q_guess(double p,double alpha,double beta,int lower_tail,int log_p){
-  pt_solve pt_s(p,alpha,beta,lower_tail,log_p);
-  double lower = 0;
-  double upper = 1;
-  rel_eps_tolerance tol(1e-6);
-  uintmax_t maxiter = 200;
-  std::pair<double,double> r;
-  r = boost::math::tools::toms748_solve(pt_s,lower,upper,tol,maxiter);
-  double pt_=(r.first+r.second)/2;
-  return Rf_qt(pt_,alpha,TRUE,FALSE);
-}

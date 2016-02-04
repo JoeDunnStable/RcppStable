@@ -14,11 +14,11 @@ public:
   {
     unsigned int n = x.n_elem;
     if (n<2) {
-      stop("cubic_spline: Number of knots must be at least 2.\n");
+      Rcpp::stop("cubic_spline: Number of knots must be at least 2.\n");
     }
     arma::vec h = arma::diff(x);
     if (any(h<=0))
-      stop("cubic_spline; the knots must be distinct and in ascending order.\n");
+      Rcpp::stop("cubic_spline; the knots must be distinct and in ascending order.\n");
     knots=x;
     if (n==2) {
       coefs.set_size(1,4);

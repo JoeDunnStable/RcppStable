@@ -6,20 +6,6 @@
 
 using namespace Rcpp;
 
-// test_g
-double test_g(double th, double x, double alpha, double beta);
-RcppExport SEXP stablecpp_test_g(SEXP thSEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject __result;
-    Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< double >::type th(thSEXP);
-    Rcpp::traits::input_parameter< double >::type x(xSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    __result = Rcpp::wrap(test_g(th, x, alpha, beta));
-    return __result;
-END_RCPP
-}
 // guess_test
 double guess_test(double p, double alpha, double beta, int lower_tail, int log_p);
 RcppExport SEXP stablecpp_guess_test(SEXP pSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP lower_tailSEXP, SEXP log_pSEXP) {
@@ -47,6 +33,31 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type lower_tail(lower_tailSEXP);
     Rcpp::traits::input_parameter< int >::type log_p(log_pSEXP);
     __result = Rcpp::wrap(q_guess(p, alpha, beta, lower_tail, log_p));
+    return __result;
+END_RCPP
+}
+// test_g
+double test_g(double th, double x, double alpha, double beta);
+RcppExport SEXP stablecpp_test_g(SEXP thSEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject __result;
+    Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< double >::type th(thSEXP);
+    Rcpp::traits::input_parameter< double >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    __result = Rcpp::wrap(test_g(th, x, alpha, beta));
+    return __result;
+END_RCPP
+}
+// test_sin
+Rcpp::NumericVector test_sin(Rcpp::NumericVector x);
+RcppExport SEXP stablecpp_test_sin(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject __result;
+    Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    __result = Rcpp::wrap(test_sin(x));
     return __result;
 END_RCPP
 }
@@ -105,18 +116,35 @@ BEGIN_RCPP
     return __result;
 END_RCPP
 }
+// ddx_sdstable
+NumericVector ddx_sdstable(NumericVector x, double alpha, double beta, double tol, double zeta_tol, int subdivisions, int verbose);
+RcppExport SEXP stablecpp_ddx_sdstable(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP tolSEXP, SEXP zeta_tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject __result;
+    Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type zeta_tol(zeta_tolSEXP);
+    Rcpp::traits::input_parameter< int >::type subdivisions(subdivisionsSEXP);
+    Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
+    __result = Rcpp::wrap(ddx_sdstable(x, alpha, beta, tol, zeta_tol, subdivisions, verbose));
+    return __result;
+END_RCPP
+}
 // sdstableMode
-double sdstableMode(double alpha, double beta, double beta_max, double tol, int verbose);
-RcppExport SEXP stablecpp_sdstableMode(SEXP alphaSEXP, SEXP betaSEXP, SEXP beta_maxSEXP, SEXP tolSEXP, SEXP verboseSEXP) {
+double sdstableMode(double alpha, double beta, double beta_max, double dbltol, int verbose);
+RcppExport SEXP stablecpp_sdstableMode(SEXP alphaSEXP, SEXP betaSEXP, SEXP beta_maxSEXP, SEXP dbltolSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< double >::type beta_max(beta_maxSEXP);
-    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type dbltol(dbltolSEXP);
     Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
-    __result = Rcpp::wrap(sdstableMode(alpha, beta, beta_max, tol, verbose));
+    __result = Rcpp::wrap(sdstableMode(alpha, beta, beta_max, dbltol, verbose));
     return __result;
 END_RCPP
 }

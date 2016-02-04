@@ -106,8 +106,8 @@ compare_qstable<-function(ps,alphas) {
   df_out
 }
 
-xs<-c(-1000,-100,seq(from=-10,to=10,by=.5),100,1000)
-ps<-c(.0001,.001,.01,1:9/10,.99,.999,.9999)
+xs<-c(-1e6,-1e6,-1e4,-1000,-100,seq(from=-10,to=10,by=.5),100,1000,1e4,1e5,1e6)
+ps<-c(.000001,.00001,.0001,.001,.01,1:9/10,.99,.999,.9999,.99999,.999999)
 alphas<-c(.1,.5,1,1.5,2)
 df_d<-compare_dstable(xs,alphas)
 df_p<-compare_pstable(xs,alphas)

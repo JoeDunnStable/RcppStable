@@ -1,10 +1,18 @@
 #ifndef STABLE_H
 #define STABLE_H
 
+#include <RcppArmadillo.h>
 #include <cmath> //For trig functions
-#include <Rmath.h>
+#include <iostream>
+#include <string>
 
-using namespace Rcpp;
+using Rcpp::Rcout;
+using std::endl;
+using std::string;
+
+//#include <Rmath.h>
+
+//using namespace Rcpp;
 
 class g_class {
 public:
@@ -23,6 +31,7 @@ public:
   double add_r;
   double th_max;         //Both th_l and th_r range from 0 to th_max
   double c2;
+  double c_ddx;
   enum fun {fun_g_l=1, fun_g_r=2, fun_ga1_r=3};
   fun fun_type;
 
@@ -37,9 +46,11 @@ public:
     if (alpha!=1){
       zeta = -beta_input*tan(alpha*M_PI_2);
       theta0_x_gt_zeta = atan(beta_input*tan(alpha*M_PI_2))/alpha;
+      theta0_x_gt_zeta = fmin(M_PI_2,fmax(-M_PI_2,theta0_x_gt_zeta));
       cat0=cos(alpha*theta0_x_gt_zeta);
     } else {
       c2=M_PI_2*fabs(1/(2*beta_input));
+      c_ddx=-c2*M_PI_2/beta_input;
     }
 
   };
@@ -68,6 +79,7 @@ public:
           add_r=0;
       }
       c2 = (alpha/(M_PI * fabs(alpha-1) * x_m_zet));
+      c_ddx = c2/((alpha-1)*(x_input-zeta));
       if (x_m_zet<1e-2*fmax(1,fabs(zeta)))
         fun_type=fun_g_l;
       else
@@ -105,11 +117,17 @@ public:
 
   double integrate_g_exp_m_g(bool log_flag, double dbltol, int subdivisions,
                                        double zeta_tol, int verbose);
+  double integrate_g_1_m_alpha_g_exp_m_g(double dbltol, int subdivisions,
+                             double zeta_tol, int verbose);
   double integrate_exp_m_g(bool giveI, double dbltol, int subdivisions, int verbose = 0);
   double sdstable1(double x, int log_flag,
                    double tol, double zeta_tol, int subdivisions, int verbose);
   double spstable1(double z, int lower_tail, int log_p,
                    double dbltol, int subdivisions, int verbose);
+  double sqstable1(double p, int lower_tail, int log_p,
+                            double dbltol, double integ_tol, int subdivisions, int verbose);
+  double ddx_sdstable1(double x, double tol, double zeta_tol,
+                       int subdivisions, int verbose);
 
   friend std::ostream& operator<<(std::ostream& os, const g_class& gc);
 
@@ -124,8 +142,8 @@ private:
   int verbose;
 
 public:
-  g_solve(double value, g_class* param, int verbose, bool log_flag=FALSE) :
-    param(param), value(value), verbose(verbose), log_flag(log_flag) {}
+  g_solve(double value, g_class* param, int verbose, bool log_flag=false) :
+    param(param), value(value), log_flag(log_flag), verbose(verbose) {}
   double operator()(const double th) {
     double g_ = param->g(th);
     g_=fmax(1e-300,fmin(g_,1e100));
@@ -137,10 +155,13 @@ public:
     else
       return g_ - value;
   }
+  void set_value(double value_in) {value=value_in;}
 }; //g_solve
 
 void g_exp_m_g(double* th, int n, void* ext);
 void exp_m_g(double* th, int n, void* ext);
+void one_m_exp_m_g(double* th, int n, void* ext);
+void g_1_m_alpha_g_exp_m_g(double* th, int n, void* ext);
 
 // Functor passed to toms748_solve to find x such that g1(x) == value
 class g_exp_m_g_solve {
@@ -186,13 +207,33 @@ public:
 };
 
 
-/* These are the ancillary function used by the R function pstable */
-
-double FCT2(double x, double beta, double dbltol, int subdivisions,
-                   bool giveI = 0, int verbose = 0);
-
-double sqstable1(double p, double alpha, double beta, int lower_tail, int log_p,
-                 double dbltol, double integ_tol, int subdivisions, int verbose);
+// Functor passed to toms748_solve to find x such that ddx_dstable(x) == value
+class ddx_sdstable_solve {
+private:
+  double value;
+  g_class param;
+  double tol;
+  double zet_tol;
+  int subdivisions;
+  int verbose;
+public:
+  ddx_sdstable_solve(double value, double alpha, double beta,
+                              double tol, double zet_tol, int subdivisions,
+                              int verbose) :
+  value(value),
+  param(alpha, beta),
+  tol(tol),
+  zet_tol(zet_tol),
+  subdivisions(subdivisions),
+  verbose(verbose){}
+  double operator()(const double x) {
+    double ret=param.ddx_sdstable1(x, tol, zet_tol, subdivisions, verbose);
+    if (verbose >=3)
+      Rcout << "x = " << x
+            << ", g_1_m_alpha_g_exp_m_g(x) = " << ret << std::endl;
+      return ret - value;
+  }
+};
 
 // These classes are used in several place when running toms748_solve
 class rel_eps_tolerance
@@ -219,6 +260,9 @@ public:
 private:
   double eps;
 };
+
+void warning(string msg);
+void stop(string msg);
 
 #endif
 

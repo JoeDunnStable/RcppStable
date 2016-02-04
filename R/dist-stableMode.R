@@ -29,7 +29,7 @@
 ##' @return a number, the stable mode
 ##' @author Diethelm Wuertz and Martin Maechler
 stableMode <- function(alpha, beta, beta.max = 1 - 1e-11,
-		       tol = .Machine$double.eps^0.25)
+		       tol = 64*.Machine$double.eps)
 {
   verbose=getOption("dstable.debug", default=F)
   stopifnot(0 < alpha, alpha <= 2, length(alpha) == 1,

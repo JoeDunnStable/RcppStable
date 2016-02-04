@@ -1,6 +1,6 @@
-#include <RcppArmadillo.h>
 #include "Stable.h"
 
+using namespace Rcpp;
 using namespace arma;
 
 vec sdstable(vec x, double alpha, double beta, int log_flag,
@@ -48,8 +48,9 @@ vec sqstable(vec p, double alpha, double beta, int lower_tail, int log_p,
                        double dbltol, double integ_tol, int subdivisions, int verbose) {
   vec ret(p.n_elem);
   uword i;
+  g_class param(alpha,beta);
   for (i=0; i<p.n_elem; i++)
-    ret(i)=sqstable1(p(i), alpha, beta, lower_tail, log_p,
+    ret(i)=param.sqstable1(p(i), lower_tail, log_p,
                      dbltol, integ_tol, subdivisions, verbose);
   return ret;
 }
@@ -64,36 +65,55 @@ NumericVector sqstable(NumericVector p, double alpha, double beta, int lower_tai
   END_RCPP
 }
 
-// Functor passed to brent_find_minima to find mode of sdstable
+vec ddx_sdstable(vec x, double alpha, double beta,
+             double tol, double zeta_tol, int subdivisions, int verbose){
+  vec ret(x.n_elem);
+  uword i;
+  g_class param(alpha,beta);
+  for (i=0; i<x.n_elem; i++)
+    ret(i)=param.ddx_sdstable1(x(i), tol, zeta_tol, subdivisions, verbose);
+  return ret;
+}
+
+// [[Rcpp::export]]
+NumericVector ddx_sdstable(NumericVector x, double alpha, double beta,
+                       double tol, double zeta_tol, int subdivisions, int verbose)
+{
+  BEGIN_RCPP
+  vec ax(x);
+  return wrap(ddx_sdstable(ax,alpha,beta,tol,zeta_tol,subdivisions,verbose));
+  END_RCPP
+}
+
+// Functor passed to tom748_solve to find mode of sdstable
 class sdstable_functor {
 private:
   g_class param;
-  int log_flag;
   double tol;
   double zeta_tol;
   int subdivisions;
   int verbose;
 public:
   sdstable_functor(double alpha, double beta, int verbose) :
-    param(alpha,beta), verbose(verbose), log_flag(0),
-    tol(64*std::numeric_limits<double>::epsilon()), zeta_tol(0), subdivisions(1000){}
+    param(alpha,beta),
+    tol(64*std::numeric_limits<double>::epsilon()), zeta_tol(0), subdivisions(1000),
+    verbose(verbose){}
   double operator()(const double x) {
-    // the negative is because we're handing this to a minimum finding routine.
-    double ret=-param.sdstable1(x,log_flag,tol,zeta_tol,subdivisions,verbose);
+    double ret=param.ddx_sdstable1(x, tol,zeta_tol,subdivisions,verbose);
     if (verbose >=3)
       Rcout << "x = " << x
-            << ", dstable(x) = " << -ret << std::endl;
+            << ", ddx_dstable(x) = " << -ret << std::endl;
     return ret;
   }
 };
 
-#include <boost/math/tools/minima.hpp>
+#include <boost/math/tools/toms748_solve.hpp>
 
 // [[Rcpp::export]]
 double sdstableMode(double alpha, double beta,
-                    double beta_max = 1-1e-11,
-                    double tol = 0.0001220703125,
-                    int verbose = 0)
+                    double beta_max,
+                    double dbltol,
+                    int verbose)
 {
   if(alpha * beta == 0){
     return 0.;
@@ -109,9 +129,10 @@ double sdstableMode(double alpha, double beta,
       lower=0;
       upper=.7;
     }
-    int tol_bits=-log(tol)/log(2);
-    sdstable_functor sdstable_f(alpha,beta,verbose);
-    std::pair<double,double> mode=boost::math::tools::brent_find_minima(sdstable_f,lower,upper,tol_bits);
+    ddx_sdstable_solve ddx_s(0, alpha, beta, dbltol, 0, 1000, verbose);
+    rel_eps_tolerance tol(dbltol);
+    boost::uintmax_t max_iter=1000;
+    std::pair<double,double> mode=boost::math::tools::toms748_solve(ddx_s,lower,upper,tol,max_iter);
     return mode.first;
   }
 }
@@ -162,7 +183,7 @@ NumericVector sdstable_quick(NumericVector x, double alpha, double beta,
   if (n>200 && alpha !=2){
     ret.fill(R_NegInf);
     // the splines don't work well near the mode so we'll use dstable for everything near the mode
-    double x_mode=sdstableMode(alpha,beta);
+    double x_mode=sdstableMode(alpha,beta,1-1e-11,tol,verbose);
     uvec ordx = sort_index(ax);
     uvec sel_exact= (ax>x_mode-.1) % (ax<x_mode+.1);
     sel_exact = sel_exact + (ordx<10) + (ordx>=n-10);
