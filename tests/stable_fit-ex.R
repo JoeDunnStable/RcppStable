@@ -57,7 +57,7 @@ graph_stable_fit<-function(l_in,subhead=""){
 
 require(stablecpp)
 
-alphas=c(.1,.5,1,1.5,2)
+alphas=c(.5,1,1.5,2)
 betas<-c(-1,-.5,0,.5,1)
 for (alpha in alphas){
   for (beta in betas){

@@ -98,8 +98,6 @@ pstable <- function(q, alpha, beta, gamma = 1, delta = 0, pm = 0,
              -1 <= beta, beta	<= 1, length(beta) == 1,
              0 <= gamma, length(pm) == 1, pm %in% 0:2,
              tol > 0, subdivisions > 0)
-  if (!is.loaded("spstable","stablecpp"))
-    dyn.load(paste(R.home(component="library"),"stablecpp/libs/stablecpp.so",sep="/"))
   ## not an official argument {no doc!}:
   verbose <- getOption("pstable.debug", default = FALSE)
   ## Parameterizations:
@@ -142,8 +140,6 @@ qstable <- function(p, alpha, beta, gamma = 1, delta = 0, pm = 0,
              -1 <= beta, beta	<= 1, length(beta) == 1,
              0 <= gamma, length(pm) == 1, pm %in% 0:2,
              tol > 0, subdivisions > 0)
-  if (!is.loaded("sqstable","stablecpp"))
-    dyn.load(paste(R.home(component="library"),"stablecpp/libs/stablecpp.so",sep="/"))
   ## not an official argument {no doc!}:
   verbose <- getOption("qstable.debug", default = FALSE)
 
@@ -195,30 +191,9 @@ rstable <- function(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
   } ## else pm == 0
 
   ## Calculate uniform and exponential distributed random numbers:
-  theta <- pi * (runif(n)-1/2)
-  w <- -log(runif(n))
-
-  result <-
-    ## If alpha is equal 1 then:
-    if (alpha == 1 ) {
-      if (beta==0)
-        rcauchy(n)
-      else
-        (1/pi2)*((pi2+beta*theta)*tan(theta)-beta*log(pi2*w*cos(theta)/(pi2+beta*theta)))
-      ## Otherwise, if alpha is different from 1:
-    } else {
-      ## FIXME: learn from nacopula::rstable1R()
-      b.tan.pa <- beta*tan(pi2*alpha)
-      theta0 <- min(max(-pi2, atan(b.tan.pa) / alpha), pi2)
-      c <- (1+b.tan.pa^2)^(1/(2*alpha))
-      a.tht <- alpha*(theta+theta0)
-      r <- ( c*sin(a.tht)/
-               (cos(theta))^(1/alpha) ) *
-        (cos(theta-a.tht)/w)^((1-alpha)/alpha)
-      ## Use Parametrization 0:
-      r - b.tan.pa
-    }
-
+  u1<-runif(n)
+  u2<-runif(n)
+  result<-srstable(alpha,beta,u1,u2)
   ## Result:
   result * gamma + delta
 }
@@ -274,20 +249,15 @@ dPareto <- function(x, alpha, beta, log = FALSE) {
 }
 
 pPareto <- function(x, alpha, beta, lower.tail = TRUE, log.p = FALSE) {
-  if(any(neg <- x < 0)) { ## left tail
-    x   [neg] <- -x	  [neg]
-    beta <- rep(beta, length.out=length(x))
-    beta[neg] <- -beta[neg]
-    stop("FIXME --- pPareto() is not correct for negative x")## switch  1-iF / iF
-  }
+  neg <- x < 0  ## left tail
+  beta <- ifelse(neg,-beta, beta)
   if(log.p) {
-    if(lower.tail) ## log(1 - iF)
-      log1p(-(1+beta)* C.stable.tail(alpha)* x^(-alpha))
-    else ## log(iF)
-      log1p(beta)+ C.stable.tail(alpha, log=TRUE) - alpha*log(x)
+    ifelse(lower.tail != neg,
+      log1p((1+beta)* C.stable.tail(alpha)* abs(x)^(-alpha)),
+      log1p(beta)+ C.stable.tail(alpha, log=TRUE) - alpha*log(abs(x)))
   } else {
-    iF <- (1+beta)* C.stable.tail(alpha)* x^(-alpha)
-    if(lower.tail) 1-iF else iF
+    iF <- (1+beta)* C.stable.tail(alpha)* abs(x)^(-alpha)
+    ifelse(lower.tail != neg, 1-iF, iF)
   }
 }
 
@@ -341,7 +311,7 @@ stable_fit<-function(y,type="q",quick=T,pm=0) {
     max(min(out,1e100),-1e+100)  #Optim doesn't like infinite numbers
   }
   ll_mle<-function(par) {
-    alpha<-.01+eps+(1.99-2*eps)*pcauchy(par["t_alpha"])  ## alpha between .01 and 2
+    alpha<-.1+eps+(1.9-2*eps)*pcauchy(par["t_alpha"])  ## alpha between .01 and 2
     beta<--1+eps+(2-2*eps)*pcauchy(par["t_beta"])      ## beta between -1 and 1
     gamma<-exp(par["l_gamma"])         ## gamma positive
     ll(alpha,beta,gamma,par["delta"])
@@ -366,12 +336,12 @@ stable_fit<-function(y,type="q",quick=T,pm=0) {
   beta0=0
   repeat {
     beta<-beta0
-    if (0>=(fa.lower<-fa(.01)))
-      alpha<-.01
+    if (0>=(fa.lower<-fa(.1)))
+      alpha<-.1
     else if (0<=(fa.upper<-fa(2)))
       alpha<-2
     else
-      alpha<-uniroot(fa,lower=.01,upper=2,f.lower=fa.lower,f.upper=fa.upper)$root
+      alpha<-uniroot(fa,lower=.1,upper=2,f.lower=fa.lower,f.upper=fa.upper)$root
     if (0<=(fb.lower<-fb(-1)))
       beta<--1
     else if (0>=(fb.upper<-fb(1)))

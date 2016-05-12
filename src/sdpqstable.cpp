@@ -1,15 +1,16 @@
-#include "Stable.h"
+#include "stable_double.h"
+#include <RcppArmadillo.h>
 
 using namespace Rcpp;
 using namespace arma;
 
-vec sdstable(vec x, double alpha, double beta, int log_flag,
-             double tol, double zeta_tol, int subdivisions, int verbose){
+vec sdstable(const vec x, const double alpha, const double beta, const int log_flag,
+             integr_ctl_double& ctl, double zeta_tol, int verbose){
   vec ret(x.n_elem);
   uword i;
-  g_class param(alpha,beta);
+  g_double_class param(alpha, beta, ctl, zeta_tol, verbose);
   for (i=0; i<x.n_elem; i++)
-    ret(i)=param.sdstable1(x(i), log_flag, tol, zeta_tol, subdivisions, verbose);
+    ret(i)=param.sdstable1(x(i), log_flag);
   return ret;
 }
 
@@ -19,18 +20,23 @@ NumericVector sdstable(NumericVector x, double alpha, double beta, int log_flag,
 {
   BEGIN_RCPP
   vec ax(x);
-  return wrap(sdstable(ax,alpha,beta,log_flag,tol,zeta_tol,subdivisions,verbose));
+  bool noext = true;  // No extrapolation.  It's too unreliable.
+  double wtg_level = 0.;  // We'll go after the subinterval with the largest error.
+  int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
+  double epsabs=0.;
+  double epsrel=tol;
+  integr_ctl_double ctl(noext, wtg_level, N, epsabs, epsrel, subdivisions, verbose);
+  return wrap(sdstable(ax,alpha,beta, log_flag, ctl, zeta_tol, verbose));
   END_RCPP
 }
 
 vec spstable(vec z, double alpha, double beta, int lower_tail, int log_p,
-                       double dbltol, int subdivisions, int verbose) {
+                       integr_ctl_double& ctl, double zeta_tol, int verbose) {
   vec ret(z.n_elem);
   uword i;
-  g_class param(alpha,beta);
+  g_double_class param(alpha, beta, ctl, zeta_tol, verbose);
   for (i=0; i<z.n_elem; i++)
-    ret(i)=param.spstable1(z(i), lower_tail, log_p,
-        dbltol, subdivisions, verbose);
+    ret(i)=param.spstable1(z(i), lower_tail, log_p);
   return ret;
 }
 
@@ -39,19 +45,25 @@ NumericVector spstable(NumericVector z, double alpha, double beta, int lower_tai
                        double dbltol, int subdivisions, int verbose) {
   BEGIN_RCPP
   vec az(z);
-  return wrap(spstable(az, alpha, beta, lower_tail, log_p,
-                       dbltol, subdivisions, verbose));
+  bool noext = true;  // No extrapolation.  It's too unreliable.
+  double wtg_level = 0.;  // We'll go after the subinterval with the largest error.
+  int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
+  double epsabs=0.;
+  double epsrel=dbltol;
+  double zeta_tol=0.;  // Not used by pstable
+  integr_ctl_double ctl(noext, wtg_level, N, epsabs, epsrel, subdivisions, verbose);
+  return wrap(spstable(az, alpha, beta, lower_tail, log_p, ctl, zeta_tol, verbose));
   END_RCPP
 }
 
-vec sqstable(vec p, double alpha, double beta, int lower_tail, int log_p,
-                       double dbltol, double integ_tol, int subdivisions, int verbose) {
+vec sqstable(const vec p, const double alpha, const double beta, const int lower_tail, int log_p,
+                       const double dbltol, integr_ctl_double& ctl,
+                       const double zeta_tol, const int verbose) {
   vec ret(p.n_elem);
   uword i;
-  g_class param(alpha,beta);
+  g_double_class param(alpha, beta, ctl, zeta_tol, verbose);
   for (i=0; i<p.n_elem; i++)
-    ret(i)=param.sqstable1(p(i), lower_tail, log_p,
-                     dbltol, integ_tol, subdivisions, verbose);
+    ret(i)=param.sqstable1(p(i), lower_tail, log_p, dbltol);
   return ret;
 }
 
@@ -60,18 +72,25 @@ NumericVector sqstable(NumericVector p, double alpha, double beta, int lower_tai
                        double dbltol, double integ_tol, int subdivisions, int verbose) {
   BEGIN_RCPP
   vec ap(p);
+  bool noext = true;  // No extrapolation.  It's too unreliable.
+  double wtg_level = 0.;  // Go after the subinterval with the largest error first.
+  int N = 10;  // Use a 10 point Gausss and 21 point Gauss Kronrod rule
+  double epsabs=0.;
+  double epsrel=integ_tol;
+  double zeta_tol = 0.;
+  integr_ctl_double ctl(noext, wtg_level, N, epsabs, epsrel, subdivisions, verbose);
   return wrap(sqstable(ap, alpha, beta, lower_tail, log_p,
-                     dbltol, integ_tol, subdivisions, verbose));
+                     dbltol, ctl, zeta_tol, verbose));
   END_RCPP
 }
 
-vec ddx_sdstable(vec x, double alpha, double beta,
-             double tol, double zeta_tol, int subdivisions, int verbose){
+vec ddx_sdstable(const vec x, const double alpha, const double beta,
+             integr_ctl_double& ctl, double zeta_tol, int verbose){
   vec ret(x.n_elem);
   uword i;
-  g_class param(alpha,beta);
+  g_double_class param(alpha, beta, ctl, zeta_tol, verbose);
   for (i=0; i<x.n_elem; i++)
-    ret(i)=param.ddx_sdstable1(x(i), tol, zeta_tol, subdivisions, verbose);
+    ret(i)=param.ddx_sdstable1(x(i));
   return ret;
 }
 
@@ -81,60 +100,45 @@ NumericVector ddx_sdstable(NumericVector x, double alpha, double beta,
 {
   BEGIN_RCPP
   vec ax(x);
-  return wrap(ddx_sdstable(ax,alpha,beta,tol,zeta_tol,subdivisions,verbose));
+  bool noext = true;  // No extrapolation.  It's too unreliable.
+  double wtg_level = 0.;  // We'll go after the subinterval with the largest error.
+  int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
+  double epsabs=0.;
+  double epsrel=tol;
+  integr_ctl_double ctl(noext, wtg_level, N, epsabs, epsrel, subdivisions, verbose);
+  return wrap(ddx_sdstable(ax, alpha, beta, ctl, zeta_tol, verbose));
   END_RCPP
 }
 
-// Functor passed to tom748_solve to find mode of sdstable
-class sdstable_functor {
-private:
-  g_class param;
-  double tol;
-  double zeta_tol;
-  int subdivisions;
-  int verbose;
-public:
-  sdstable_functor(double alpha, double beta, int verbose) :
-    param(alpha,beta),
-    tol(64*std::numeric_limits<double>::epsilon()), zeta_tol(0), subdivisions(1000),
-    verbose(verbose){}
-  double operator()(const double x) {
-    double ret=param.ddx_sdstable1(x, tol,zeta_tol,subdivisions,verbose);
-    if (verbose >=3)
-      Rcout << "x = " << x
-            << ", ddx_dstable(x) = " << -ret << std::endl;
-    return ret;
-  }
-};
+vec srstable(const double alpha, const double beta, vec u1, vec u2){
+  vec ret(u1.n_elem);
+  uword i;
+  for (i=0; i<u1.n_elem; i++)
+    ret(i)=srstable1(alpha, beta, u1[i], u2[i]);
+  return ret;
+}
 
-#include <boost/math/tools/toms748_solve.hpp>
+// [[Rcpp::export]]
+NumericVector srstable(double alpha, double beta, NumericVector u1, NumericVector u2)
+{
+  BEGIN_RCPP
+  vec au1(u1), au2(u2);
+  return wrap(srstable(alpha, beta, au1, au2));
+  END_RCPP
+}
 
 // [[Rcpp::export]]
 double sdstableMode(double alpha, double beta,
-                    double beta_max,
                     double dbltol,
-                    int verbose)
+                    double tol, double zeta_tol, int subdivisions, int verbose)
 {
-  if(alpha * beta == 0){
-    return 0.;
-  }
-  else {
-    if(beta > beta_max) beta = beta_max;
-    else if(beta < -beta_max) beta = -beta_max;
-    double upper, lower;
-    if (beta>0){
-      lower=-.7;
-      upper=0.;
-    } else {
-      lower=0;
-      upper=.7;
-    }
-    ddx_sdstable_solve ddx_s(0, alpha, beta, dbltol, 0, 1000, verbose);
-    rel_eps_tolerance tol(dbltol);
-    boost::uintmax_t max_iter=1000;
-    std::pair<double,double> mode=boost::math::tools::toms748_solve(ddx_s,lower,upper,tol,max_iter);
-    return mode.first;
-  }
+  bool noext = true;  // No extrapolation.  It's too unreliable.
+  double wtg_level = 0.;  // We'll go after the subinterval with the largest error.
+  int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
+  double epsabs=0.;
+  double epsrel=tol;
+  integr_ctl_double ctl(noext, wtg_level, N, epsabs, epsrel, subdivisions, verbose);
+  return stable_mode(alpha, beta, dbltol, ctl, zeta_tol, verbose);
 }
 
 vec dt(vec x, double df, int log_p=0){
@@ -178,12 +182,18 @@ NumericVector sdstable_quick(NumericVector x, double alpha, double beta,
 {
   BEGIN_RCPP
   vec ax(x);
+  bool noext = true;  // No extrapolation.  It's too unreliable.
+  double wtg_level = 0.;  // We'll go after the subinterval with the largest error.
+  int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
+  double epsabs=0.;
+  double epsrel=tol;
+  integr_ctl_double ctl(noext, wtg_level, N, epsabs, epsrel, subdivisions, verbose);
   uword n = ax.n_elem;
   vec ret(n);
   if (n>200 && alpha !=2){
     ret.fill(R_NegInf);
     // the splines don't work well near the mode so we'll use dstable for everything near the mode
-    double x_mode=sdstableMode(alpha,beta,1-1e-11,tol,verbose);
+    double x_mode=stable_mode(alpha,beta,1-1e-11,ctl, zeta_tol,verbose);
     uvec ordx = sort_index(ax);
     uvec sel_exact= (ax>x_mode-.1) % (ax<x_mode+.1);
     sel_exact = sel_exact + (ordx<10) + (ordx>=n-10);
@@ -210,7 +220,7 @@ NumericVector sdstable_quick(NumericVector x, double alpha, double beta,
         vec pt_knot_high=join_cols(pt_high_inner,pt_high_outer);
         vec x_high_outer(qt(pt_high_outer,alpha));
         vec x_knot_high = join_cols(x_high_inner,x_high_outer);
-        vec y_knot_high = sdstable(x_knot_high,alpha,beta,TRUE,tol,zeta_tol,subdivisions,verbose)
+        vec y_knot_high = sdstable(x_knot_high,alpha,beta,TRUE,ctl ,zeta_tol,verbose)
                                 - dt(x_knot_high,alpha,TRUE);
         uvec sel_high_finite = find_finite(y_knot_high);
         pt_knot_high = pt_knot_high(sel_high_finite);
@@ -234,7 +244,7 @@ NumericVector sdstable_quick(NumericVector x, double alpha, double beta,
         vec pt_knot_low = join_cols(pt_low_outer,pt_low_inner);
         vec x_low_outer(qt(pt_low_outer,alpha));
         vec x_knot_low = join_cols(x_low_outer,x_low_inner);
-        vec y_knot_low = sdstable(x_knot_low, alpha, beta, TRUE, tol, zeta_tol, subdivisions, verbose)
+        vec y_knot_low = sdstable(x_knot_low, alpha, beta, TRUE, ctl, zeta_tol, verbose)
                          - dt(x_knot_low, alpha, TRUE);
         uvec sel_low_finite = find_finite(y_knot_low);
         pt_knot_low = pt_knot_low(sel_low_finite);
@@ -245,9 +255,9 @@ NumericVector sdstable_quick(NumericVector x, double alpha, double beta,
         ret(find(sel_low))=spline_low(pt_low)+dt(ax(find(sel_low)),alpha,TRUE);
       }
 
-      ret(find(sel_exact))=sdstable(ax(find(sel_exact)),alpha,beta,TRUE, tol, zeta_tol, subdivisions, verbose);
+      ret(find(sel_exact))=sdstable(ax(find(sel_exact)),alpha,beta,TRUE, ctl, zeta_tol, verbose);
   } else {
-    ret=sdstable(ax, alpha, beta, TRUE, tol, zeta_tol, subdivisions, verbose);
+    ret=sdstable(ax, alpha, beta, TRUE, ctl, zeta_tol, verbose);
   }
   return wrap(ret);
   END_RCPP;

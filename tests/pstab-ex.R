@@ -10,9 +10,10 @@ source(system.file("test-tools-1.R", package = "Matrix"), keep.source=interactiv
 options(pstable.debug = FALSE)
 # options(pstable.debug = TRUE)# want to see when uniroot() is called
 
-stopifnot(all.equal(pstable(0.3, 0.75, -.5, tol= 1e-14),
+stopifnot(all.equal(pstable(0.3, 0.75, -.5),
 		    0.66887227658457, tol = 1e-10))
 ## was                    0.6688726496, tol = 1e-8))
+
 pstable(-4.5, alpha = 1, beta = 0.01)## gave integration error (now uniroot..)
 
 ## a "outer vectorized" version:
@@ -48,20 +49,6 @@ qplot(x=x,y=y,data=df,color=fnct, ylab="log(f(x))",geom="line", log="x",
       annotation_logticks(sides="b")
 
 ## Check that	pstable() is the integral of dstable() --- using simple Simpson's rule
-
-## in it's composite form:
-## \int_a^b f(x)   dx\approx \frac{h}{3}
-##  \bigg[ f(x_0) + 2 \sum_{j=1}^{n/2-1}f(x_{2j}) +
-##		 + 4 \sum_{j=1}^{n/2}  f(x_{2j-1}) +
-##	  + f(x_n) \bigg],
-intSimps <- function(fx, h) {
-    stopifnot((n <- length(fx)) %% 2 == 0,
-	      n >= 4, length(h) == 1, h > 0)
-    n2 <- n %/% 2
-    j2 <- 2L * seq_len(n2-1)
-    j4 <- 2L * seq_len(n2) - 1L
-    h/3 * sum(fx[1],  2* fx[j2], 4* fx[j4], fx[n])
-}
 
 vplayout<-function(x,y)
   viewport(layout.pos.row=x,layout.pos.col=y)
@@ -201,7 +188,7 @@ showProc.time() #
 
 ### Newly found -- Marius Hofert, 18.Sept. (via qstable):
 stopifnot(all.equal(qstable(0.6, alpha = 0.5, beta = 1,
-			    tol=1e-15, integ.tol=1e-15),
+			    tol=1e-15),
 			    2.63641788208582))    #This comes from qEstable
 ## was    2.636426573120147))
 ##--> which can be traced to the first of

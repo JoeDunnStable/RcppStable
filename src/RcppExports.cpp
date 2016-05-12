@@ -6,61 +6,6 @@
 
 using namespace Rcpp;
 
-// guess_test
-double guess_test(double p, double alpha, double beta, int lower_tail, int log_p);
-RcppExport SEXP stablecpp_guess_test(SEXP pSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP lower_tailSEXP, SEXP log_pSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject __result;
-    Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< double >::type p(pSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    Rcpp::traits::input_parameter< int >::type lower_tail(lower_tailSEXP);
-    Rcpp::traits::input_parameter< int >::type log_p(log_pSEXP);
-    __result = Rcpp::wrap(guess_test(p, alpha, beta, lower_tail, log_p));
-    return __result;
-END_RCPP
-}
-// q_guess
-double q_guess(double p, double alpha, double beta, int lower_tail, int log_p);
-RcppExport SEXP stablecpp_q_guess(SEXP pSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP lower_tailSEXP, SEXP log_pSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject __result;
-    Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< double >::type p(pSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    Rcpp::traits::input_parameter< int >::type lower_tail(lower_tailSEXP);
-    Rcpp::traits::input_parameter< int >::type log_p(log_pSEXP);
-    __result = Rcpp::wrap(q_guess(p, alpha, beta, lower_tail, log_p));
-    return __result;
-END_RCPP
-}
-// test_g
-double test_g(double th, double x, double alpha, double beta);
-RcppExport SEXP stablecpp_test_g(SEXP thSEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject __result;
-    Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< double >::type th(thSEXP);
-    Rcpp::traits::input_parameter< double >::type x(xSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    __result = Rcpp::wrap(test_g(th, x, alpha, beta));
-    return __result;
-END_RCPP
-}
-// test_sin
-Rcpp::NumericVector test_sin(Rcpp::NumericVector x);
-RcppExport SEXP stablecpp_test_sin(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject __result;
-    Rcpp::RNGScope __rngScope;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
-    __result = Rcpp::wrap(test_sin(x));
-    return __result;
-END_RCPP
-}
 // sdstable
 NumericVector sdstable(NumericVector x, double alpha, double beta, int log_flag, double tol, double zeta_tol, int subdivisions, int verbose);
 RcppExport SEXP stablecpp_sdstable(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP log_flagSEXP, SEXP tolSEXP, SEXP zeta_tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
@@ -133,18 +78,34 @@ BEGIN_RCPP
     return __result;
 END_RCPP
 }
-// sdstableMode
-double sdstableMode(double alpha, double beta, double beta_max, double dbltol, int verbose);
-RcppExport SEXP stablecpp_sdstableMode(SEXP alphaSEXP, SEXP betaSEXP, SEXP beta_maxSEXP, SEXP dbltolSEXP, SEXP verboseSEXP) {
+// srstable
+NumericVector srstable(double alpha, double beta, NumericVector u1, NumericVector u2);
+RcppExport SEXP stablecpp_srstable(SEXP alphaSEXP, SEXP betaSEXP, SEXP u1SEXP, SEXP u2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    Rcpp::traits::input_parameter< double >::type beta_max(beta_maxSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type u1(u1SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type u2(u2SEXP);
+    __result = Rcpp::wrap(srstable(alpha, beta, u1, u2));
+    return __result;
+END_RCPP
+}
+// sdstableMode
+double sdstableMode(double alpha, double beta, double dbltol, double tol, double zeta_tol, int subdivisions, int verbose);
+RcppExport SEXP stablecpp_sdstableMode(SEXP alphaSEXP, SEXP betaSEXP, SEXP dbltolSEXP, SEXP tolSEXP, SEXP zeta_tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject __result;
+    Rcpp::RNGScope __rngScope;
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< double >::type dbltol(dbltolSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type zeta_tol(zeta_tolSEXP);
+    Rcpp::traits::input_parameter< int >::type subdivisions(subdivisionsSEXP);
     Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
-    __result = Rcpp::wrap(sdstableMode(alpha, beta, beta_max, dbltol, verbose));
+    __result = Rcpp::wrap(sdstableMode(alpha, beta, dbltol, tol, zeta_tol, subdivisions, verbose));
     return __result;
 END_RCPP
 }

@@ -11,7 +11,7 @@ nc <- 512 # number of points for curve()
 
 pdf("stable-tails.pdf")
 
-pstab.tailratio <- function(alpha, beta, n = nc, prob = 1/4096,
+pstab.tailratio <- function(alpha, beta, n = nc, prob = 2^-40,
                             xmin = qstable(0.95, alpha,beta, tol = 0.01),
                             xmax = qstable(1 - prob, alpha,beta))
 {
@@ -48,18 +48,16 @@ plot.pstableTailratio <- function(x, type="l", col="blue3",
     tit<-substitute(atop(num, epsilon(x) == (bar(F)(x,.) - bar(F)[P](x,.)) / bar(F)[P](x,.)),list(num=tit))
     dat <-as.data.frame(x[c("x","eps")])
     dat$type=rep("actual",length(x$x))
-    dat <- dat[dat[,"eps"] > 0, ] ## drop invalid  eps[]
-    fm <- lm(log(eps) ~ log(x), weights = x^2, data = dat)
+#    dat <- dat[dat[,"eps"] > 0, ] ## drop invalid  eps[]
+    fm <- lm(log(abs(eps)) ~ log(x), weights = x^2, data = dat)
     dat <- rbind(dat,data.frame(x=dat["x"],eps=exp(predict(fm)),type=rep("fit",nrow(dat))))
-    ## NOTA BENE: Empirically,  I see that  eps > 0 <==> alpha > 1
-    ##                                      eps < 0 <==> alpha < 1
     old_theme<-theme_update(legend.position=c(1,1),legend.justification=c(1,1))
     Form <- function(x) formatC(x, digits=4, wid=1)
     fit.line <-substitute(log(epsilon) == A + B * log(x),
                           list(A = Form(coef(fm)[["(Intercept)"]]),
                                B = Form(coef(fm)[["log(x)"]])))
-    print(qplot(x=x, y=eps, log = "xy", data = dat, color=type,
-                ylab = expression(epsilon ~~~ "('eps')"),
+    print(qplot(x=x, y=abs(eps), log = "xy", data = dat, color=type,
+                ylab = expression(abs(epsilon) ~~~ "('abs(eps)')"),
                 main = tit, geom="line", ...)+
           scale_color_discrete(breaks=c("actual","fit"),
                                labels=c("actual", fit.line))+
@@ -78,10 +76,20 @@ plot(tr   <- pstab.tailratio(1.2, 0.5))
 
 plot(tr3 <- pstab.tailratio(0.7, +0.9))
 
-plot(tr4 <- pstab.tailratio(1.7, +0.6))# not really useful: pstable(.) = 1 too early
+plot(tr4 <- pstab.tailratio(1.7, +0.6))
 
 showProc.time()
-
+
+plot(tr5   <- pstab.tailratio(.1, 0.5))
+
+plot(tr6 <- pstab.tailratio(0.2, +0.9))
+
+plot(tr7 <- pstab.tailratio(.5, +0.6))
+
+showProc.time()
+
+showProc.time()
+
 ##---------------- Now the density
 
 ##' @title Explore eps(x) where   dstable(x)/dPareto(x) = 1 + eps(x)
@@ -93,7 +101,7 @@ showProc.time()
 ##' @param xmax
 ##' @return an object of \code{\link{class} "dstableTailratio"}, ...
 ##' @author Martin Maechler, 21 Mar 2011
-dstab.tailratio <- function(alpha, beta, n = nc, prob = 1/4096,
+dstab.tailratio <- function(alpha, beta, n = nc, prob = 2^-40,
                             xmin = qstable(0.95, alpha,beta, tol = 0.01),
                             xmax = qstable(1 - prob, alpha,beta))
 {
