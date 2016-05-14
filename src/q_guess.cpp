@@ -94,10 +94,15 @@ private:
 };
 
 
+using boost::math::policies::policy;
+using boost::math::policies::overflow_error;
+using boost::math::policies::ignore_error;
+
+typedef policy<overflow_error<ignore_error> > my_policy;
 
 double q_guess(double p,double alpha,double beta,int lower_tail,int log_p){
     pt_solve pt_s(p,alpha,beta,lower_tail,log_p);
-    students_t_distribution<double> st(alpha);
+    students_t_distribution<double, my_policy> st(alpha);
     double lower = 0;
     double upper = 1;
     rel_eps_tolerance tol(1e-6);

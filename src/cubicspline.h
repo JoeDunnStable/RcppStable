@@ -1,48 +1,73 @@
-#include <RcppArmadillo.h>
+#include <Eigen/Dense>
+#include <vector>
 #include <iostream>
-using namespace Rcpp;
+#include <algorithm>
+using std::sort;
 
+typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Mat;
+typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vec;
+typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> uVec;
+typedef Eigen::Matrix<int, Eigen::Dynamic, 1> iVec;
+typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, unsigned int> pMat;
 
-// [[Rcpp::depends(RcppArmadillo]]
+class CompareIndicesByAnotherVectorValues {
+    const Vec& _values;
+    public: CompareIndicesByAnotherVectorValues(const Vec &values) : _values(values) {}
+    public: bool operator() (const unsigned int& a, const unsigned int& b) const { return (_values)(a) < (_values)(b); }
+};
+
+inline uVec sort_indexes(const Vec &v) {
+
+    CompareIndicesByAnotherVectorValues comp(v);
+
+    // initialize original index locations
+    uVec idx(v.size());
+    for (unsigned int i = 0; i != idx.size(); ++i) idx[i] = i;
+
+    // sort indexes based on comparing values in v
+    sort(idx.data(), idx.data()+idx.size(), comp);
+
+    return idx;
+}
 
 class cubicspline {
 private:
-  arma::vec knots;
-  arma::mat coefs;
+  Vec knots;
+  Mat coefs;
 public:
-  cubicspline(arma::vec x, arma::vec y, bool endp2nd, arma::vec der)
+    cubicspline() {};
+  cubicspline(Vec x, Vec y, bool endp2nd, Vec der)
   {
-    unsigned int n = x.n_elem;
+    unsigned int n = static_cast<unsigned int>(x.size());
     if (n<2) {
-      Rcpp::stop("cubic_spline: Number of knots must be at least 2.\n");
+        return;
     }
-    arma::vec h = arma::diff(x);
-    if (any(h<=0))
-      Rcpp::stop("cubic_spline; the knots must be distinct and in ascending order.\n");
+    Vec h = x.tail(n-1)-x.head(n-1);
+    if ((h.array()<=0).any())
+        throw std::range_error("cubic_spline; the knots must be distinct and in ascending order.\n");
     knots=x;
     if (n==2) {
-      coefs.set_size(1,4);
-      coefs.zeros();
+      coefs.setZero(1,4);
       coefs(0,0)=y(0);
       coefs(0,1)=(x(1)!=x(0)) ? (y(1)-y(0))/(x(1)-x(0)) : 0;
       return;
     }
-    arma::vec e(n);
-    arma::mat A(n,n);
-    A.zeros();
-    arma::vec d(n-1);
+    Vec e(n);
+    Mat A;
+    A.setZero(n,n);
+    Vec d(n-1);
     e(0)= 2 *h(0);
-    e.subvec(1,n-2) = 2*(h.subvec(0,n-3) + h.subvec(1,n-2));
+    e.segment(1,n-2) = 2*(h.segment(0,n-2) + h.segment(1,n-2));
     e(n-1)= 2*h(n - 2);
-    A.diag()=e;
-    A.diag(-1)=h;
-    A.diag(1)=h;
-    d = arma::diff(y)/h;
+    A.diagonal()=e;
+    A.diagonal(-1)=h;
+    A.diagonal(1)=h;
+    d = (y.tail(n-1)-y.head(n-1)).array()/h.array();
 
-    arma::vec rhs(n);
-    rhs.subvec(1,n-2) = 3 * (d.subvec(1,n-2) - d.subvec(0,n - 3));
-    double der0 = der(0);
-    double dern = der(1);
+    Vec rhs(n);
+    rhs.segment(1,n-2) = 3 * (d.segment(1,n-2) - d.segment(0,n - 2));
+    double der0 = endp2nd ? der(0) : 0;
+    double dern = endp2nd ? der(1) : 0;
     if (endp2nd) {
       A(0,0) = 2 * h[0];
       A(0,1) =  h(0);
@@ -52,69 +77,72 @@ public:
       rhs(n-1) = 3 * (dern - d(n-2));
     }
     else {
-      A.row(0).zeros();
+      A.topRows(1).setZero();
       A(0,0) = 1;
-      A.row(n-1).zeros();
+      A.bottomRows(1).setZero();
       A(n-1, n-1) = 1;
       rhs(0) = der0;
       rhs(n-1)= dern;
     }
 
-    coefs.set_size(n, 4);
-    coefs.zeros();
-    coefs.col(2) = solve(A, rhs);
+    coefs.setZero(n, 4);
+      coefs.col(2) = A.colPivHouseholderQr().solve(rhs);
     unsigned int m;
     for (m=0; m<n-1; m++) {
       coefs(m, 3) = (coefs(m+1,2) - coefs(m, 2))/3/h(m);
       coefs(m,1) = d(m) - h(m)/3 * (coefs(m + 1, 2) + 2 * coefs(m, 2));
       coefs(m,0) = y(m);
     }
-    coefs.resize(n-1,4);
+    coefs.conservativeResize(n-1,4);
+//      cout << "knots:" << endl << knots << endl;
+//      cout << "y_knots" << endl << y << endl;
+//      cout << "coefs: " << endl << coefs << endl;
   } //constructor
 
-  arma::vec operator() (arma::vec x){
-    arma::vec ret(x.n_elem);
-    arma::uvec s_index = sort_index(x);
-    arma::uvec indices(x.n_elem);
-    indices.zeros();
-    arma::ivec isgood(x.n_elem);
-    isgood.ones();
-    arma::uword i=0, j=0;
-    for (j=0; j<x.n_elem && (x(s_index(j))< knots(0)) ; j++)
+  Vec operator() (Vec x){
+    Vec ret(x.size());
+    uVec s_index = sort_indexes(x);
+    uVec indices;
+    indices.setZero(x.size());
+    iVec isgood;
+    isgood.setOnes(x.size());
+    unsigned int i=0, j=0;
+    for (j=0; j<x.size() && (x(s_index(j))< knots(0)) ; j++)
       isgood(s_index(j)) = 0;
-    while (j<x.n_elem){
+    while (j<x.size()){
       if (x(s_index(j))==knots(i)){
-        indices(s_index(j)) = std::min(i,knots.n_elem-2);
+        indices(s_index(j)) = std::min(i,static_cast<unsigned int>(knots.size())-2);
         j++;
       } else if (x(s_index(j)) > knots(i)){
         i++;
-        if (i>knots.n_elem-1){
-          for (;j<x.n_elem;j++)
+        if (i>knots.size()-1){
+          for (;j<x.size();j++)
             isgood(s_index(j))=0;
           break;
         }
       } else {
-        indices(s_index(j)) = std::min(i-1,knots.n_elem-2);
+        indices(s_index(j)) = std::min(i-1,static_cast<unsigned int>(knots.size())-2);
         j++;
       }
     }
-    for (i=0; i<x.n_elem; i++) {
+    for (i=0; i<x.size(); i++) {
       if (isgood(i)) {
         j=indices(i);
         double dx=x(i)-knots(j);
         ret(i) = ((coefs(j,3)*dx + coefs(j,2))*dx + coefs(j,1))*dx + coefs(j,0);
       } else
-        ret(i) = R_NaReal;
+        ret(i) = NAN;
     }
     return ret;
   }
-  void get_knots() {
-    Rcpp::Environment global = Rcpp::Environment::global_env();
-    global["knots_cpp"]=wrap(knots);
+  Vec get_knots() {
+     return knots;
   }
-  void get_coefs() {
-    Rcpp::Environment global = Rcpp::Environment::global_env();
-    global["coefs_cpp"]=wrap(coefs);
+  Mat get_coefs() {
+      return coefs;
+  }
+  unsigned int get_n_knots() {
+      return knots.size();
   }
 };
 

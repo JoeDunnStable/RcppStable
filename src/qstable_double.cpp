@@ -156,14 +156,14 @@ double q_guess(double p, double alpha,double  beta, int lower_tail,int log_p);
 double g_double_class::sqstable1(double p, int lower_tail, int log_p, double dbltol) {
     
     if (lower_tail) {
-        if (fabs(log_p ? exp(p) : p) < dbltol)
+        if (fabs(log_p ? exp(p) : p) ==0)
                 return NegInf;
-        else if (fabs("1"-log_p ? exp(p) : p) < dbltol)
+        else if (fabs("1"-log_p ? exp(p) : p) == 0)
             return PosInf;
     } else {
-        if (fabs(log_p ? exp(p) : p) < dbltol)
+        if (fabs(log_p ? exp(p) : p) == 0)
             return PosInf;
-        else if (fabs("1"-log_p ? exp(p) : p) < dbltol)
+        else if (fabs("1"-log_p ? exp(p) : p) == 0)
             return NegInf;
     }
     if (alpha == 1 && beta_input == 0) {
@@ -185,10 +185,10 @@ double g_double_class::sqstable1(double p, int lower_tail, int log_p, double dbl
     p_double_solve p_s(p, this, lower_tail, log_p);
     pair<double,double> r;
     rel_eps_tolerance_double tol(dbltol);
-    double guess = q_guess(p,alpha,beta_input,lower_tail,log_p);
+    double guess = fmax(-1e300,fmin(1e300,q_guess(p,alpha,beta_input,lower_tail,log_p)));
     if (verbose)
         cout << "Guess for q " << guess << endl;
-    double factor = 2.;
+    double factor = fmax(1.,.1*fabs(guess));
     bool rising = lower_tail;
     boost::uintmax_t maxiter = 1000;
     r=boost::math::tools::bracket_and_solve_root2(p_s,guess,factor,rising,tol,maxiter);

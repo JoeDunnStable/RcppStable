@@ -78,6 +78,58 @@ dstable<-function (x, alpha, beta, gamma = 1, delta = 0, pm = 0, log = FALSE,
     ans/gamma
 } ## {dstable}
 
+dstable.quick<-function (x, alpha, beta, gamma = 1, delta = 0, pm = 0, log = FALSE,
+                   tol = 64 * .Machine$double.eps, zeta.tol = NULL, subdivisions = 1000) {
+  ## Like dstable but with approximations to speed calculation of large sized x
+  ## Description:
+  ##	 Returns density for stable DF
+
+  ## Arguments:
+  ##	 alpha = index of stability, in the range (0,2]
+  ##	 beta  = skewness, in the range [-1, 1]
+  ##	 gamma = scale, in the range (0, infinity)
+  ##	 delta = location, in the range (-infinity, +infinity)
+  ##	 pm = type of parmeterization
+  ##   lower.tail = TRUE for lower tail, FALSE for upper tail
+  ##   log_flag = return log of density
+
+  ## Parameter Check:
+  ## NB: (gamma, delta) can be *vector*s (vectorized along x)
+  stopifnot(0 < alpha, alpha <= 2, length(alpha) == 1, -1 <=
+              beta, beta <= 1, length(beta) == 1, 0 <= gamma, length(pm) ==
+              1, pm %in% 0:2, tol > 0, subdivisions > 0)
+  ## not an official argument {no doc!}:
+  verbose <- getOption("dstable.debug", default = FALSE)
+  ## Parameterizations:
+  if (pm == 1) {
+    delta <- delta + beta * gamma * .om(gamma, alpha)
+  }
+  else if (pm == 2) {
+    delta <- delta - alpha^(-1/alpha) * gamma * stableMode(alpha,
+                                                           beta)
+    gamma <- alpha^(-1/alpha) * gamma
+  } ## else pm == 0
+
+  ## Shift and Scale:
+  x <- (x - delta)/gamma
+  ## Special Cases:
+  if (alpha == 2) {
+    ans<-dnorm(x, mean = 0, sd = sqrt(2), log = log)
+  }
+  else if (alpha == 1 && beta == 0) {
+    ans<-dcauchy(x, log = log)
+  }
+  else {
+    if (is.null(zeta.tol))
+      zeta.tol<-0.
+    ans<-as.vector(sdstable_quick(x,alpha, beta, log,
+                            tol, zeta.tol, subdivisions, verbose))
+  }
+  if (log)
+    ans - log(gamma)
+  else
+    ans/gamma
+} ## {dstable}
 
 ### ------------------------------------------------------------------------------
 
@@ -261,167 +313,27 @@ pPareto <- function(x, alpha, beta, lower.tail = TRUE, log.p = FALSE) {
   }
 }
 
-dstable.quick<-function(x,alpha,beta,gamma=1,delta=0,pm=0,log=F,
-                        tol = 64 * .Machine$double.eps, zeta.tol = NULL, subdivisions = 1000){
-  verbose=getOption("dstable.debug", default=F)
-  if (pm==1){
-    if (alpha!=1)
-      delta<-delta+beta*gamma*tan(pi*alpha/2)
-    else
-      delta<-delta+beta*(2/pi)*gamma*log(gamma)
-  }  else if (pm == 2) {
-    delta <- delta - alpha^(-1/alpha) * gamma * stableMode(alpha,
-                                                           beta)
-    gamma <- alpha^(-1/alpha) * gamma
-  } ## else pm == 0
-  x<-(x-delta)/gamma
-  ## Special Cases:
-  if (alpha == 2) {
-    loglik<-dnorm(x, mean = 0, sd = sqrt(2), log = T)
-  }
-  else if (alpha == 1 && beta == 0) {
-    loglik<-dcauchy(x, log = T)
-  }
-  else {
-    if (is.null(zeta.tol))
-    zeta.tol<-0.
-    loglik<-sdstable_quick(x,alpha,beta,
-                           tol = tol, zeta_tol = zeta.tol, subdivisions = subdivisions,
-                           verbose=verbose)
-  }
-  loglik<-loglik-log(gamma)
-  if(log==T)
-    loglik
-  else
-    exp(loglik)
-}
-
 stable_fit<-function(y,type="q",quick=T,pm=0) {
-  n<-length(y)
-  df_trace<<-data.frame()
-  eps<-1e-10
-  ll<-function(alpha,beta,gamma,delta) {
-    df_trace<<-rbind(df_trace,data.frame(alpha=alpha,beta=beta,
-                                         gamma=gamma,delta=delta,out=NA))
-    if (quick)
-      out<--sum(dstable.quick(y,alpha=alpha,beta=beta,gamma=gamma,delta=delta,pm=pm,log=T))
-    else
-      out<--sum(dstable(y,alpha=alpha,beta=beta,gamma=gamma,delta=delta,pm=pm,log=T))
-    df_trace[nrow(df_trace),"out"]<<-out
-    max(min(out,1e100),-1e+100)  #Optim doesn't like infinite numbers
+  stopifnot(length(pm) == 1, pm %in% 0:2)
+  results<-stable_fit_cpp(y, type, quick);
+  ## Parameterizations:
+  if (pm == 1) {
+    for (i in 1:nrow(results)) {
+      om <- .om(results$gamma[i],results$alpha[i])
+    }
+    results$delta <- with(results, delta - beta * gamma * om)
+    results$pm <- rep(1,nrow(results))
   }
-  ll_mle<-function(par) {
-    alpha<-.1+eps+(1.9-2*eps)*pcauchy(par["t_alpha"])  ## alpha between .01 and 2
-    beta<--1+eps+(2-2*eps)*pcauchy(par["t_beta"])      ## beta between -1 and 1
-    gamma<-exp(par["l_gamma"])         ## gamma positive
-    ll(alpha,beta,gamma,par["delta"])
+  else if (pm == 2) {
+    for (i in 1:nrow(results)) {
+      mode <- stableMode(results$alpha[i],results$beta[i])
+    }
+      results$delta <- with(results,delta + gamma * mode)
+      results$gamma <- with(results, alpha^(1/alpha) * gamma)
+      results$pm <- rep(2, nrow(results))
   }
-  ll_q_mle<-function(par) {
-    gamma<-exp(par["l_gamma"])         ## gamma positive
-    ll(alpha,beta,gamma,par["delta"])
-  }
-  # First McCulloch's method
-  q=quantile(y,probs=c(.05,.25,.5,.75,.95))
-  q_kurt<-(q[5]-q[1])/(q[4]-q[2])
-  q_skew<-(q[5]+q[1]-2*q[3])/(q[5]-q[1])
-  fa<-function(a) {
-    qs<-qstable(c(.05,.25,.75,.95),a,beta)
-    (qs[4]-qs[1])/(qs[3]-qs[2])-q_kurt
-  }
-  fb<-function(b){
-    qs<-qstable(c(.05,.5,.95),alpha,b)
-    (qs[3]+qs[1]-2*qs[2])/(qs[3]-qs[1])-q_skew
-  }
-  alpha0=1
-  beta0=0
-  repeat {
-    beta<-beta0
-    if (0>=(fa.lower<-fa(.1)))
-      alpha<-.1
-    else if (0<=(fa.upper<-fa(2)))
-      alpha<-2
-    else
-      alpha<-uniroot(fa,lower=.1,upper=2,f.lower=fa.lower,f.upper=fa.upper)$root
-    if (0<=(fb.lower<-fb(-1)))
-      beta<--1
-    else if (0>=(fb.upper<-fb(1)))
-      beta<-1
-    else
-      beta<-uniroot(fb,lower=-1,upper=1,f.lower=fb.lower,f.upper=fb.upper)$root
-    if (abs(alpha-alpha0)+abs(beta-beta0)<.0001) break
-    alpha0<-alpha
-    beta0<-beta
-  }
-  df_out<-data.frame(alpha=alpha,beta=beta)
-  df_out$gamma<-(q[4]-q[2])/(qstable(.75,alpha=df_out$alpha,beta=df_out$beta,pm=0)-
-                               qstable(.25,alpha=df_out$alpha,beta=df_out$beta,pm=0))
-  df_out$delta<-q[3]-qstable(.5,alpha=df_out$alpha,beta=df_out$beta,gamma=df_out$gamma,pm=pm)
-  df_out$pm<-pm
-  df_out$method<-rep("McCulloch")
-  qs<-with(df_out,qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,gamma=gamma,delta=delta,pm=pm))
-  df_out$two_ll_n<--2*ll(df_out$alpha,df_out$beta,df_out$gamma,df_out$delta)/n
-  df_out$n<-n
-  df_out$q_kurt<-(qs[5]-qs[1])/(qs[4]-qs[2])
-  df_out$q_skew<-(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1])
-  df_out$q_scale<-qs[4]-qs[2]
-  df_out$q_location<-qs[3]
-  df_out$convergence<-NA
-  if (type=="mle") {
-    fit_mle<-optim(par=c(t_alpha=min(1e100,max(-1e100,qcauchy((df_out$alpha-.01)/(1.99)))),
-                                    t_beta=min(1e100,max(-1e100,qcauchy((1+df_out$beta)/(2)))),
-                                    l_gamma=log(df_out$gamma),
-                                    delta=df_out$delta),
-                   fn=ll_mle,
-                   control=list(maxit=1000))
-    tmp<<-fit_mle
-    alpha=.01+eps+(1.99-2*eps)*pcauchy(fit_mle$par[["t_alpha"]])
-    beta=-1+eps+(2-2*eps)*pcauchy(fit_mle$par[["t_beta"]])
-    gamma=exp(fit_mle$par[["l_gamma"]])
-    delta=fit_mle$par[["delta"]]
-    qs<-qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,gamma=gamma,delta=delta)
-    df_out<-rbind(df_out,
-                  data.frame(alpha=alpha,
-                             beta=beta,
-                             gamma=gamma,
-                             delta=delta,
-                             two_ll_n=-2*as.double(fit_mle$value)/n,
-                             pm=pm,
-                             n=n,
-                             method="mle",
-                             q_kurt=(qs[5]-qs[1])/(qs[4]-qs[2]),
-                             q_skew=(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1]),
-                             q_scale=qs[4]-qs[2],
-                             q_location=qs[3],
-                             convergence=fit_mle$convergence))
-  }
-  else if (type=="q_mle") {
-    ## alpha and beta are from McCulloch's method
-    fit_mle<-optim(par=c(l_gamma=log(df_out$gamma),
-                         delta=df_out$delta),
-                   fn=ll_q_mle,
-                   control=list(maxit=1000))
-    gamma=exp(fit_mle$par[["l_gamma"]])
-    delta=fit_mle$par[["delta"]]
-    qs<-qstable(c(.05,.25,.5,.75,.95),alpha=alpha,beta=beta,gamma=gamma,delta=delta)
-    df_out<-rbind(df_out,
-                  data.frame(alpha=alpha,
-                             beta=beta,
-                             gamma=gamma,
-                             delta=delta,
-                             two_ll_n=-2*as.double(fit_mle$value)/n,
-                             pm=pm,
-                             n=n,
-                             method="q_mle",
-                             q_kurt=(qs[5]-qs[1])/(qs[4]-qs[2]),
-                             q_skew=(qs[5]+qs[1]-2*qs[3])/(qs[5]-qs[1]),
-                             q_scale=qs[4]-qs[2],
-                             q_location=qs[3],
-                             convergence=fit_mle$convergence))
-  }
-  if (type=="q")
-    list(parameters=df_out,fit_mle=NULL)
-  else
-    list(parameters=df_out,fit_mle=fit_mle)
+  ## else pm == 0
+  results
 }
 
 

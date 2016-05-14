@@ -8,7 +8,7 @@
 #include <iostream>
 #include <iomanip>
 
-#include <RcppArmadillo.h>
+#include <RcppEigen.h>
 #define cout Rcpp::Rcout
 #define cerr Rcpp::Rcerr
 /*
@@ -760,6 +760,10 @@ dqagpe(
     result = NAN;
     return;
   }
+  if (npts==2 && points.at(0)==points.at(1)) {
+        result =0;
+        return;
+  }
   for (vector<double>::const_iterator ppoint=points.begin(); ppoint < points.end()-1; ppoint++)
     if (*ppoint >= *(ppoint+1)) {
         cerr << "dqagp: points are either not distinct or not in ascending order" << endl;
@@ -811,7 +815,6 @@ dqagpe(
     if (ier > 2) {
       ier = ier - 1;
     }
-    result = result;
     return;
   }
   //
@@ -1066,7 +1069,6 @@ dqagpe(
   if (ier > 2) {
     ier = ier - 1;
   }
-  result = result;
 }
 
 

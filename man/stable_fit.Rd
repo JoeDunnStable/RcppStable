@@ -20,7 +20,7 @@
 stable_fit(y,type="q",quick=T,pm=0)
 
 dstable.quick(x, alpha, beta, gamma=1, delta=0, pm=0,
-        log=F,
+        log=FALSE,
         tol = 64 * .Machine$double.eps, zeta.tol = NULL,
         subdivisions = 1000)
 }

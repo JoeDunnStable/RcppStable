@@ -5,6 +5,10 @@ sdstable <- function(x, alpha, beta, log_flag, tol, zeta_tol, subdivisions, verb
     .Call('stablecpp_sdstable', PACKAGE = 'stablecpp', x, alpha, beta, log_flag, tol, zeta_tol, subdivisions, verbose)
 }
 
+sdstable_quick <- function(x, alpha, beta, log_flag, tol, zeta_tol, subdivisions, verbose) {
+    .Call('stablecpp_sdstable_quick', PACKAGE = 'stablecpp', x, alpha, beta, log_flag, tol, zeta_tol, subdivisions, verbose)
+}
+
 spstable <- function(z, alpha, beta, lower_tail, log_p, dbltol, subdivisions, verbose) {
     .Call('stablecpp_spstable', PACKAGE = 'stablecpp', z, alpha, beta, lower_tail, log_p, dbltol, subdivisions, verbose)
 }
@@ -25,11 +29,7 @@ sdstableMode <- function(alpha, beta, dbltol, tol, zeta_tol, subdivisions, verbo
     .Call('stablecpp_sdstableMode', PACKAGE = 'stablecpp', alpha, beta, dbltol, tol, zeta_tol, subdivisions, verbose)
 }
 
-cubic_spline <- function(x, x_knots, y_knots, isclamped, deriv) {
-    .Call('stablecpp_cubic_spline', PACKAGE = 'stablecpp', x, x_knots, y_knots, isclamped, deriv)
-}
-
-sdstable_quick <- function(x, alpha, beta, tol, zeta_tol, subdivisions, verbose) {
-    .Call('stablecpp_sdstable_quick', PACKAGE = 'stablecpp', x, alpha, beta, tol, zeta_tol, subdivisions, verbose)
+stable_fit_cpp <- function(y, type, quick) {
+    .Call('stablecpp_stable_fit_cpp', PACKAGE = 'stablecpp', y, type, quick)
 }
 

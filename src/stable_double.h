@@ -5,11 +5,13 @@
 #include <iostream>
 #include <vector>
 
-#include <RcppArmadillo.h>
+#include <RcppEigen.h>
 #define cout Rcpp::Rcout
 #define cerr Rcpp::Rcerr
-// using std::cout;
-// using std::cerr;
+/*
+using std::cout;
+using std::cerr;
+*/
 using std::endl;
 using std::ostream;
 using std::vector;
@@ -71,14 +73,15 @@ public:
   int ier;
 
   g_double_class(double alpha, double beta, integr_ctl_double& ctl, double zeta_tol, int verbose) : alpha(alpha), beta_input(beta),
-      ctl_final(&ctl), zeta_tol(zeta_tol), verbose(verbose), x_input(NAN) {
+      x_input(NAN), ctl_final(&ctl), zeta_tol(zeta_tol), verbose(verbose) {
       subs.resize(ctl_final->limit);
-    if (alpha!=1){
+    if (fabs(alpha-1)>64*Machine_eps){
       zeta = -beta_input*tan(alpha*pi2);
       theta0_x_gt_zeta = atan(beta_input*tan(alpha*pi2))/alpha;
       theta0_x_gt_zeta = fmin(pi2,fmax(-pi2,theta0_x_gt_zeta));
       cat0=cos(alpha*theta0_x_gt_zeta);
     } else {
+      this->alpha=1;
       c2=pi2*fabs(1/(2*beta_input));
       c_ddx=-c2*pi2/beta_input;
     }
@@ -216,8 +219,9 @@ private:
 
 public:
     double f_of_g(double th) {return (*f)(param->g(th), param);}
-    Int_f_of_g_double(double (*f)(double, g_double_class*), g_double_class* param, integr_ctl_double* ctl) : f(f),
-    param(param) {
+    Int_f_of_g_double(double (*f)(double, g_double_class*), g_double_class* param, integr_ctl_double* ctl) :
+      param(param), f(f)
+     {
         subinterval_double::initialize(ctl);
     }
     string msg() {return msgs[ier];};
@@ -267,12 +271,10 @@ class ddx_sdstable_double_solve {
 private:
   double value;
   g_double_class param;
-  double tol;
 public:
   ddx_sdstable_double_solve(double value, double alpha, double beta, double tol, integr_ctl_double& ctl, double zeta_tol, int verbose):
   value(value),
-  param(alpha, beta, ctl, zeta_tol, verbose),
-  tol(tol){}
+  param(alpha, beta, ctl, zeta_tol, verbose) {}
   double operator()(const double x) {
     double ret=param.ddx_sdstable1(x);
       if (param.verbose >=3)

@@ -15,7 +15,7 @@
     density, distribution and quantile function and
     to generate random variates of the stable distribution.
 
-    The four functions are:
+    The five functions are:
     \tabular{ll}{
       \code{[dpqr]stable} \tab the (skewed) stable distribution.
     }
@@ -92,8 +92,7 @@ rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
     distributions. Nolan (1997) derived expressions in form of integrals
     based on the characteristic function for standardized stable random
     variables. For \code{dstable} and \code{pstable}, these integrals
-    are numerically evaluated using \R's \code{\link{integrate}()}
-    function.
+    are numerically evaluated.
     \cr
     \dQuote{S0} parameterization [pm=0]: based on the (M) representation
     of Zolotarev for an alpha stable distribution with skewness

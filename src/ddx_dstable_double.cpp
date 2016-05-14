@@ -29,8 +29,8 @@ double g_double_class::integrate_ddx_dstable() {
     // For  x = zeta, have special case formula [Nolan(1997)];
     // need to use it also for x ~= zeta, i.e., x.m.zet := |x - zeta| < delta :
     neval=0;
-    if (!isfinite(zeta)) {
-        cerr << "!is_finite(zeta)" << endl;
+    if (alpha != 1 && !isfinite(zeta)) {
+        throw std::range_error("integrate_ddx_dstable: alpha !=1 && !is_finite(zeta)");
         return NAN;
     }
     if(!good_theta2) {
@@ -89,7 +89,7 @@ double g_double_class::ddx_sdstable1(double x)
     case other :
       double ret;
       double dfdx_zeta;
-          
+
       if (alpha != 1) { // 0 < alpha < 2	&  |beta| <= 1 from above
         // General Case
         if (verbose)
@@ -113,7 +113,7 @@ double g_double_class::ddx_sdstable1(double x)
           return dfdx_zeta;
         }
         // the real check should be about the feasibility of g() below, or its integration
-              
+
       } // alpha != 1
       ret = integrate_ddx_dstable();
       if (ret == 0) {
@@ -132,7 +132,7 @@ double g_double_class::ddx_sdstable1(double x)
                  << "integrate_ddx_dstable returned 0, using dfdx_zeta = " << ret << endl;
         }
       }
-          
+
       return ret;
   } // switch on dist_type
 } //ddx_sdstaple1

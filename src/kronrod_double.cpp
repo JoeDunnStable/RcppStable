@@ -1,7 +1,10 @@
 
 #include "kronrod_double.h"
 
-#include <Accelerate/Accelerate.h>
+#include <Eigen/eigenvalues>
+using Eigen::SelfAdjointEigenSolver;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 #include <iostream>
 #include <iomanip>
@@ -9,7 +12,11 @@
 #include <algorithm>
 #include <cmath>
 
+#include <RcppEigen.h>
+#define cout Rcpp::Rcout
+/*
 using std::cout;
+ */
 using std::endl;
 using std::setw;
 using std::setprecision;
@@ -45,35 +52,31 @@ void toms726(const int N, const vector<double>& a, const vector<double>& b, vect
         w.at(0)=b.at(0);
         return;
     }
-    vector<double> J(N*N, 0);
+    MatrixXd J = MatrixXd::Zero(N,N);
     for (int k=0; k<N-1; k++){
-        J.at(k+k*N)=a.at(k);
-        J.at(k+(k+1)*N)=sqrt(b.at(k+1));
-        J.at(k+1+k*N)=J.at(k+(k+1)*N);
+        J(k,k)=a.at(k);
+        J(k,k+1)=sqrt(b.at(k+1));
+        J(k+1,k)=J(k,(k+1));
     }
-    J.at(N-1+(N-1)*N)=a.at(N-1);
-    int lwork, info;
-    lwork = -1;
-    vector<double> work(1);
-    vector<double> d(N), e(N);
-    int N_tmp = N;
-    char jobz[] = "V";
-    char uplo[] = "U";
-    dsyev_(jobz, uplo, &N_tmp, &J[0], &N_tmp, &d[0], &work[0], &lwork, &info);
-    lwork = (int) double (work[0]);
-    work.resize(std::max(1, lwork));
-    //inverse matrix
-    dsyev_(jobz, uplo, &N_tmp, &J[0], &N_tmp, &d[0], &work[0], &lwork, &info);
+    J(N-1,N-1)=a.at(N-1);
+    SelfAdjointEigenSolver<MatrixXd> es;
+    es.compute(J);
+    VectorXd e_values = es.eigenvalues();   // These are as yet unsorted
+    MatrixXd e_vectors = es.eigenvectors();
+    vector<double> e(N);
     for (int k=0; k<N; k++) {
-        e.at(k)=b.at(0)*(pow(J.at(k*(N)),2));
+        e.at(k) = b.at(0) * pow(e_vectors(0,k), 2);
     }
     vector<sort_data<double> > srt_d(N);
     for (int i=0; i<N; i++) {
-        sort_data<double> elem(d.at(i),i);
+        sort_data<double> elem(e_values(i),i);
         srt_d.at(i) = elem;
     }
     std::sort(srt_d.begin(), srt_d.end(),sd_lt<double>);
     for (int i=0; i<N; i++){
+        if (verbose)
+            cout << setw(25) << setprecision(16) << srt_d.at(i).a
+            << setw(25) << srt_d.at(i).index << endl;
         x.at(i)=srt_d.at(i).a;
         w.at(i)=e.at(srt_d.at(i).index);
     }

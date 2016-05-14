@@ -27,24 +27,6 @@ graph_stable_fit<-function(l_in,subhead=""){
         labs(title=title)+
         geom_contour(aes(x=alpha,y=beta,z=ghp_value,color=type))
 
-  if (type=="mle") {
-    df_label2<-data.frame(x=rep(.2,7),
-                          y=-(.05+(3:9)/10),
-                          value=as.double(parameters[2,label_names]),
-                          confint=c(sqrt(diag(stats4::vcov(fit_mle)))*qnorm(.975),NA,NA,NA))
-    df_label2$label<-c(sprintf("%11s =%8.4f +/-%8.4f",
-                              label_var[1:4],df_label2$value[1:4],df_label2$confint[1:4]),
-                              sprintf("%11s =%8.4f",label_var[5],df_label2$value[5]),
-                              sprintf("%11s =%8.0f",label_var[6:7],df_label2$value[6:7]))
-
-    df_label<-rbind(df_label,df_label2)
-    shape <- stats4::vcov(fit_mle)[c("alpha","beta"),c("alpha","beta")]
-    center <- stats4::coef(fit_mle)[c("alpha","beta")]
-    radius <- sqrt(2 * qf(.95, 2, parameters[2,"n"]-2))
-    angles <- (0:100) * 2 * pi/100
-    unit.circle <- cbind(cos(angles), sin(angles))
-##    conf_ellipse <- as.data.frame(t(center + radius * t(unit.circle %*% chol(shape))))
-  }
   gph<-gph+
 ##    geom_polygon(mapping=aes(x=alpha,y=beta),data=conf_ellipse,fill="grey")+
     geom_point(mapping=aes(x=alpha,y=beta,shape=method),data=parameters,
@@ -74,9 +56,9 @@ for (alpha in alphas){
     input_parameters<-data.frame(alpha=alpha,beta=beta,gamma=1,delta=0,pm=0,
                                  two_ll_n=2*sum(dstable.quick(xtst,alpha,beta,log=T))/n,
                                  n=n,method="input",q_kurt,q_skew,q_scale,q_location,
-                                 convergence)
+                                 convergence,iterations=NA,cpu_time=NA)
     row.names(input_parameters)<-NULL
     sf_out<-stable_fit(xtst,type="q_mle")
-    print(rbind(input_parameters,sf_out$parameters))
+    print(rbind(input_parameters,sf_out))
   }
 }

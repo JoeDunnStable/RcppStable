@@ -16,6 +16,7 @@ double stable_mode(double alpha, double beta, double dbltol,
         return 0.;
     }
     else {
+        if (fabs(alpha-1.)<1e-7) alpha=1.;  // The routine blows up otherwise
         double upper, lower;
         double outer_bound;
         double zeta;

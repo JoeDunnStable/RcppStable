@@ -210,7 +210,7 @@ ostream& operator<<(ostream& os, const g_double_class& gc) {
             os << " th_max = " << gc.th_max << endl         //Both th_l and th_r range from 0 to th_max
             << " c2 = " << gc.c2 << endl
             << " fun_type = " << gc.fun_type << endl;
-            
+
             if (gc.alpha==1) {  // variable used when alpha = 1
                 os << " abs_x = " << gc.abs_x << endl
                 << " i2b = " << gc.i2b << endl
@@ -254,7 +254,7 @@ void f_of_g (double *th, int n, void *ext) {
 }
 
 double Int_f_of_g_double::operator() () {
-    
+
     if (subinterval_double::ctl->verbose>=4){
         cout << endl
         << "dqagpe(f_of_g, " << "with param" << *param;
@@ -263,14 +263,14 @@ double Int_f_of_g_double::operator() () {
     dqagpe(::f_of_g, (void *) this, param->points,
                   result, abserr, neval, ier,
                   g_double_class::subs, last);
-    
+
     if (subinterval_double::ctl->verbose>=3){
         double rsum=0, esum=0;
         for (int i=0; i<last; i++) {
             rsum += g_double_class::subs.at(i).r;
             esum += g_double_class::subs.at(i).e;
         }
-        
+
         if (ier > 0)
             cout << msgs[ier] << ":" << endl;
         cout << "Integral of f_of_g from theta = " << param->points.front()
@@ -295,8 +295,8 @@ double g_double_class::integrate_dstable(bool log_flag) {
   // For  x = zeta, have special case formula [Nolan(1997)];
   // need to use it also for x ~= zeta, i.e., x.m.zet := |x - zeta| < delta :
   neval=0;
-  if (!isfinite(zeta)) {
-      throw std::range_error("integrate_dstable: !is_finite(zeta)");
+  if (alpha != 1 && !isfinite(zeta)) {
+      throw std::range_error("integrate_dstable: alpha !=1 && !is_finite(zeta)");
   }
   if(!good_theta2) {
     if (verbose)
@@ -331,19 +331,19 @@ double g_double_class::integrate_dstable(bool log_flag) {
 void g_double_class::map_g() {
     boost::uintmax_t max_iter;
     rel_eps_tolerance_double rel_tol(ctl_final->epsrel);
-    
+
     //' g() is strictly monotone -- Nolan(1997) ["3. Numerical Considerations"]
     //'     alpha >= 1  <==>  g() is falling, ie. from Inf --> 0;  otherwise growing from 0 to +Inf
-    
+
     points.resize(0);
     points.push_back(0);
-    if (th_max==0) return;
     points.push_back(th_max);
+    if (th_max==0) return;
     bool do_hi=true, do_lo=true;
     double g_hi = g(th_max);
     double g_lo = g(0);
     neval+=2;
-    
+
     if (verbose)
         cout << "g_hi = " << g_hi << ", g_lo = " << g_lo << endl;
     g_double_solve g_s(0., this, true);
@@ -369,12 +369,12 @@ void g_double_class::map_g() {
         double g_upper = g_hi;
         double g_lower = g_lo;
         th_guess(1,lower, g_lower, upper, g_upper);
-        
+
         if (verbose)
            cout << "theta 2 range from th_guess = " << lower << " to " << upper << endl;
         // toms748_solve passes lower, upper and max_iter by reference and changes them.
         max_iter = 1000;
-        
+
         pair<double,double> ur1_pair = toms748_solve(g_s, lower, upper, rel_tol, max_iter);
         theta2 = (ur1_pair.first+ur1_pair.second)/2;
         g_theta2 = g(theta2);
@@ -409,7 +409,9 @@ void g_double_class::map_g() {
             max_iter=1000;
             double lower = 0;
             double upper = th;
-            if ((log(g(th))-(*ln_g)[j])*(log(g_lo) - (*ln_g)[j]) >=0) continue;
+            double ln_g_th = log(g(th));
+            if (!isfinite(ln_g_th)) break;
+            if ((ln_g_th-(*ln_g)[j])*(log(g_lo) - (*ln_g)[j]) >=0) continue;
             th_pair = toms748_solve(g_s, lower, upper, rel_tol, max_iter);
             neval+=max_iter;
             if (max_iter==1000) break;
@@ -443,7 +445,9 @@ void g_double_class::map_g() {
             max_iter=1000;
             double lower = th;
             double upper = th_max;
-            if ((log(g(th))-(*ln_g)[j])*(log(g_hi) - (*ln_g)[j]) >=0) continue;
+            double ln_g_th = log(g(th));
+            if (!isfinite(ln_g_th)) break;
+            if ((ln_g_th-(*ln_g)[j])*(log(g_hi) - (*ln_g)[j]) >=0) continue;
             th_pair = toms748_solve(g_s, lower, upper, rel_tol, max_iter);
             neval+=max_iter;
             if (max_iter==1000) break;
@@ -588,7 +592,7 @@ double g_double_class::sdstable1(double x, int log_flag)
       case other :
           double ret;
           double f_zeta = 0.0;
-          
+
           if (alpha != 1) { // 0 < alpha < 2	&  |beta| <= 1 from above
               // General Case
               if (verbose)
@@ -617,7 +621,7 @@ double g_double_class::sdstable1(double x, int log_flag)
               }
               // the real check should be about the feasibility of g() below, or its integration
               bool smallAlpha = alpha < alpha_small_dstable;
-              
+
               if (smallAlpha) {
                   if (x<zeta) {
                       ret = dstable_smallA(-x, alpha, -beta, log_flag);
@@ -631,7 +635,7 @@ double g_double_class::sdstable1(double x, int log_flag)
                       << "sdstable = " << ret <<"\n";
                   return ret;
               }
-              
+
           } // alpha != 1
           ret = integrate_dstable(log_flag);
           if (ret == (log_flag ? NegInf : 0)) {
@@ -651,7 +655,7 @@ double g_double_class::sdstable1(double x, int log_flag)
               }
           }
           return ret;
-        
+
     }
 
 } //sdstaple1

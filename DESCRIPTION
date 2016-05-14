@@ -1,13 +1,13 @@
 Package: stablecpp
 Type: Package
 Title: Calculates the d, p, q, and r for the stable distribution using C++
-Version: 0.4
+Version: 0.5
 Date: 2015-09-22
 Author: Joseph Dunn, Diethelm Wuertz, Martin Maechler and Rmetrics core team members.
 Maintainer: "Joseph Dunn"<jldunn@verizon.net>
-Depends: R (>= 3.1.0),  utils
+Depends: R (>= 3.1.0),  RcppEigen, utils
 Imports: Rcpp, stats, stats4
-LinkingTo: Rcpp, RcppArmadillo, BH
+LinkingTo: Rcpp, RcppEigen, BH
 Suggests: FMStable, RUnit, Rmpfr, ggplot2, plyr, reshape2, stabledist
 Description: This package contains density, probability and quantile functions,
   and random number generation for (skew) stable distributions, using the

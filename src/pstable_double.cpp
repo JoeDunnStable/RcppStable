@@ -27,8 +27,8 @@ double g_double_class::integrate_pstable() {
     // pstable1 adjusts for whether this is the cdf or the complement of the cdf
     // or the difference between F.zeta and F.
     neval=0;
-    if (!isfinite(zeta)) {
-        throw std::range_error("integrate_pstable: !is_finite(zeta)");
+    if (alpha !=1 && !isfinite(zeta)) {
+        throw std::range_error("integrate_pstable: alpha != 1 && !is_finite(zeta)");
     }
     if(!good_theta2) {
         if (verbose)

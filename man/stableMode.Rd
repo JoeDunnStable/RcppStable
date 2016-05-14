@@ -11,16 +11,12 @@
 }
 \usage{
 stableMode(alpha, beta,
-           beta.max = 1 - 1e-11,
-           tol = .Machine$double.eps^0.25)
+           tol = 64 * .Machine$double.eps)
 }
 \arguments{
   \item{alpha, beta}{numeric parameters:
     value of the index parameter \code{alpha} in the range \eqn{(0,2]},
     and the skewness parameter \code{beta}, in the range \eqn{[-1, 1]}.}
-  \item{beta.max}{for numerical purposes, values of beta too close to 1,
-    are set to \code{beta.max}.  Do not modify unless you know what
-    you're doing.}
   \item{tol}{numerical tolerance for \code{\link{optimize}()}.}
 }
 \value{
