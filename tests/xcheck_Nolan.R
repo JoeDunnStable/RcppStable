@@ -2,13 +2,18 @@ require(stablecpp)
 require(reshape2)
 require(plyr)
 
-load("Nolan_v3.14.02.RData")
+cdir<-getwd()
+if (basename(cdir)=="tests") {
+  load("../../stablecpp/inst/extdata/Nolan_v3.14.02.RData")
+} else {
+  load ("inst/extdata/Nolan_v3.14.02.RData")
+}
 
 compare_dstable<-function() {
   write("Comparing stablecpp::dstable to to Nolan STABLE v3.14.02","")
   df_out<-ddply(df_Nolan_3.14.02,.(alpha,beta),
                  function(df) data.frame(alpha=df$alpha,beta=df$beta,x=df$x,
-                                         v_cpp=dstable(df$x,df$alpha[1],df$beta[1],zeta.tol=5e-5),
+                                         v_cpp=dstable(df$x,df$alpha[1],df$beta[1]),
                                          v_nolan=df$dstable))
   df_out$diff<-with(df_out,abs(v_cpp-v_nolan))
   df_out<-df_out[order(df_out$diff,decreasing=T),]

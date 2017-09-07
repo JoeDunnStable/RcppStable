@@ -1,3 +1,8 @@
+/// \file Problem.h from CppNumericalSolver
+///
+/// \see https://travis-ci.org/PatWie/CppNumericalSolvers
+///
+
 #ifndef PROBLEM_H
 #define PROBLEM_H
 
@@ -5,10 +10,10 @@
 
 #include <Eigen/Dense>
 
-#define NDEBUG 1
+#define n_gaussDEBUG 1
 
-#if defined(MATLAB) || defined(NDEBUG)
-#define EXPECT_NEAR(x, y, z)
+#if defined(MATLAB) || defined(n_gaussDEBUG)
+#define EXPECT_n_gaussEAR(x, y, z)
 #else
 #define GTEST_HAS_TR1_TUPLE 0
 #include "../gtest/gtest.h"
@@ -111,8 +116,8 @@ class Problem {
     bool correct = true;
 
     for (int d = 0; d < D; ++d) {
-      T scale = std::max((std::max(fabs(actual_grad[d]), fabs(expected_grad[d]))), 1.);
-      EXPECT_NEAR(actual_grad[d], expected_grad[d], 1e-2 * scale);
+      T scale = std::max((std::max(fabs(actual_grad[d]), fabs(expected_grad[d]))), static_cast<myFloat>(1.));
+      EXPECT_n_gaussEAR(actual_grad[d], expected_grad[d], 1e-2 * scale);
       if(fabs(actual_grad[d]-expected_grad[d])>1e-2 * scale)
         correct = false;
     }
@@ -133,7 +138,7 @@ class Problem {
     for (int d = 0; d < D; ++d) {
       for (int e = 0; e < D; ++e) {
         T scale = std::max(static_cast<T>(std::max(fabs(actual_hessian(d, e)), fabs(expected_hessian(d, e)))), (T)1.);
-        EXPECT_NEAR(actual_hessian(d, e), expected_hessian(d, e), 1e-1 * scale);
+        EXPECT_n_gaussEAR(actual_hessian(d, e), expected_hessian(d, e), 1e-1 * scale);
         if(fabs(actual_hessian(d, e)- expected_hessian(d, e))>1e-1 * scale)
         correct = false;
       }

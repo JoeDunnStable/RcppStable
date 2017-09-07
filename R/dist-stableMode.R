@@ -23,15 +23,13 @@
 ##' @title Mode of the stable distribution
 ##' @param alpha
 ##' @param beta
-##' @param beta.max for numerical purposes, values of beta too close to 1,
-##'  are set to beta.max
-##' @param tol numerical tolerance used in optimize()
+##' @param tol numerical tolerance used to find mode
 ##' @return a number, the stable mode
 ##' @author Diethelm Wuertz and Martin Maechler
 stableMode <- function(alpha, beta, tol = 64*.Machine$double.eps)
 {
-  verbose=getOption("dstable.debug", default=F)
-  stopifnot(0 < alpha, alpha <= 2, length(alpha) == 1,
+  verbose=getOption("stableMode.debug", default=F)
+  stopifnot(0 <= alpha, alpha <= 2, length(alpha) == 1,
 	          -1 <= beta, beta <= 1, length(beta) == 1)
-  sdstableMode(alpha,beta,tol,tol,0,1000,0)
+  sdstableMode(alpha,beta,tol,tol,1000,verbose)
 }

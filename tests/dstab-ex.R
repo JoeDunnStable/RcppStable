@@ -162,7 +162,6 @@ dst.smlA <- function(x, alpha, beta, log = FALSE) {
 set.seed(17)
 
 alpha <- 1e-15 ## must be larger than cutoff in .fct1() in ../R/dpqr-stable.R :
-stopifnot(alpha > stablecpp:::.alpha.small.dstable)
 for(beta in runif(20, -1, 1)) {
  cat(sprintf("beta =%10g: ", beta))
  for(N in 1:10) {
@@ -207,14 +206,14 @@ qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE),geom="line",
 x<-exp(seq(log(1e-15),log(4e4),length.out=1001))
 qplot(x=x,y=dstable(x, alpha= 0.1, beta=1, pm=1, log=TRUE), geom="line",log="x",
       main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == TRUE)))
-## If we decrease  zeta.tol "to 0", we get better here:
+
 x<-seq(-40,20,length.out=101)
-qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE, zeta.tol=1e-100), geom="line",
-      main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == T, zeta.tol == 10^-100)))
+qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE), geom="line",
+      main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == T)))
 ## or here, ... but still not good enough
 x<-seq(-45,30,length.out=101)
-qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE, zeta.tol=1e-200), geom="line",
-      main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == T, zeta.tol == 10^-200)))
+qplot(x=x,y=dstable(exp(x), alpha= 0.1, beta=1, pm=1, log=TRUE), geom="line",
+      main=expression(dstable(e^x, alpha == 0.1, beta == 1, pm == 1, log == T)))
 
 showProc.time()
 
@@ -375,4 +374,3 @@ stopifnot(0 < r.b1[1], r.b1[2] < 0.35)
 showProc.time()
 
 dev.off()
-cat('Time elapsed: ', proc.time(),'\n') # "stats"

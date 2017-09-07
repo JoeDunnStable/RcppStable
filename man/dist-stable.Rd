@@ -15,7 +15,7 @@
     density, distribution and quantile function and
     to generate random variates of the stable distribution.
 
-    The five functions are:
+    The four functions are:
     \tabular{ll}{
       \code{[dpqr]stable} \tab the (skewed) stable distribution.
     }
@@ -24,7 +24,7 @@
 \usage{
 dstable(x, alpha, beta, gamma = 1, delta = 0, pm = 0,
         log = FALSE,
-        tol = 64*.Machine$double.eps, zeta.tol = NULL,
+        tol = 64*.Machine$double.eps,
         subdivisions = 1000)
 pstable(q, alpha, beta, gamma = 1, delta = 0, pm = 0,
         lower.tail = TRUE, log.p = FALSE,
@@ -63,13 +63,6 @@ rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
       \item{qstable():}{used for rootfinding, see \code{\link{uniroot}}.}
     }
   }
-  \item{zeta.tol}{(\code{dstable}) numerical tolerance for checking if
-    \code{x} is close to \eqn{\zeta(\alpha,\beta)}.  The default,
-    \code{NULL} depends itself on \eqn{(\alpha,\beta)}.
-    \cr
-    As it is \emph{experimental} and not guaranteed to remain in the
-    future, its use is not recommended in production code.  Rather e-mail the
-    package maintainer about it.}
   \item{subdivisions}{maximal number of intervals for integration, see
     \code{\link{integrate}}.}
   \item{maxiter, trace}{maximal number of iterations and verboseness in

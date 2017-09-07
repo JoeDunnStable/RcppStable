@@ -21,7 +21,7 @@ stable_fit(y,type="q",quick=T,pm=0)
 
 dstable.quick(x, alpha, beta, gamma=1, delta=0, pm=0,
         log=FALSE,
-        tol = 64 * .Machine$double.eps, zeta.tol = NULL,
+        tol = 64 * .Machine$double.eps,
         subdivisions = 1000)
 }
 
@@ -56,13 +56,6 @@ dstable.quick(x, alpha, beta, gamma=1, delta=0, pm=0,
       \item{dstable.quick():}{used for numerical integration,}
     }
   }
-  \item{zeta.tol}{(\code{dstable}) numerical tolerance for checking if
-    \code{x} is close to \eqn{\zeta(\alpha,\beta)}.  The default,
-    \code{NULL} depends itself on \eqn{(\alpha,\beta)}.
-    \cr
-    As it is \emph{experimental} and not guaranteed to remain in the
-    future, its use is not recommended in production code.  Rather e-mail the
-    package maintainer about it.}
   \item{subdivisions}{maximal number of intervals for integration, see
     \code{\link{integrate}}.}
 }
@@ -99,10 +92,6 @@ dstable.quick(x, alpha, beta, gamma=1, delta=0, pm=0,
    fit_q<-stable_fit(r,type="q")
    print(fit_q)
 
-## Calculate the fit using McCulloch's method for the initial quess, followed
-## by the Maximum Likelihood Method.
-   fit_mle<-stable_fit(r,type="mle")
-   print(fit_mle)
 }
 
 \keyword{distribution}

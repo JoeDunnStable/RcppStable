@@ -1,8 +1,8 @@
 Package: stablecpp
 Type: Package
 Title: Calculates the d, p, q, and r for the stable distribution using C++
-Version: 0.5
-Date: 2015-09-22
+Version: 0.9
+Date: 2016-07-02
 Author: Joseph Dunn, Diethelm Wuertz, Martin Maechler and Rmetrics core team members.
 Maintainer: "Joseph Dunn"<jldunn@verizon.net>
 Depends: R (>= 3.1.0),  RcppEigen, utils
@@ -11,8 +11,8 @@ LinkingTo: Rcpp, RcppEigen, BH
 Suggests: FMStable, RUnit, Rmpfr, ggplot2, plyr, reshape2, stabledist
 Description: This package contains density, probability and quantile functions,
   and random number generation for (skew) stable distributions, using the
-  parametrizations of Nolan. The routines .fct1, fct2, FCT1, and FCT2 have been
-  traslated to C++.
+  parametrizations of Nolan. Except for some top level interface routines, the
+  calculation is entirely in C++.
 License: GPL (>= 2)
 SystemRequirements:	C++11
 LazyData: TRUE

@@ -1,16 +1,16 @@
-//
-//  q_guess.cpp
-//  
-//
-//  Created by Joseph Dunn on 1/2/16.
-//
-//
+///
+/// \file q_guess.cpp
+/// \author Joseph Dunn
+/// \copyright 2016 Joseph Dunn
+/// \copyright Distributed under the terms of the GNU General Public License version 3
 
 #include "q_guess.h"
-#include <boost/math/tools/toms748_solve.hpp>
 #include <boost/math/distributions/students_t.hpp>
-#include <cmath>
+#include <boost/math/tools/toms748_solve.hpp>
+#include <boost/math/constants/constants.hpp>
 #include <iostream>
+
+namespace stable_distribution {
 
 using boost::math::tools::toms748_solve;
 using boost::math::students_t_distribution;
@@ -40,7 +40,7 @@ public:
         double c_t=tgamma((alpha+1)/2)/(sqrt(alpha*pi)*tgamma(alpha/2))*pow(alpha,((alpha+1)/2));
         rplus=c_stable_plus/c_t;
         rminus=c_stable_minus/c_t;
-        // construct a cubic spline for the mapping of pt to pstable
+        // construct a cubic spline for the mapping of pt to cdf
         students_t_distribution<double> st(alpha);
         if (alpha<1 && beta==1){
             knot1 = cdf(st,-tan(pi2*alpha));
@@ -78,8 +78,8 @@ public:
     
 };
 
-const double pt_solve::pi=M_PI;
-const double pt_solve::pi2=M_PI_2;
+const double pt_solve::pi = boost::math::constants::pi<double>();
+const double pt_solve::pi2 = boost::math::constants::half_pi<double>();
 
 class rel_eps_tolerance
 {
@@ -112,3 +112,4 @@ double q_guess(double p,double alpha,double beta,int lower_tail,int log_p){
     double pt_=(r.first+r.second)/2;
     return quantile(st, fmax(1e-15,fmin(pt_,1-1e-15)));
 }
+} // namespace stable_distribution

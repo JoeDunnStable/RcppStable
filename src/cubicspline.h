@@ -1,42 +1,59 @@
+/// \file cubicspline.h
+/// \author Joseph Dunn
+/// \copyright 2016 Joseph Dunn
+/// \copyright Distributed under the terms of the GNU General Public License version 3
+
+#include "myFloat.h"
 #include <Eigen/Dense>
-#include <vector>
-#include <iostream>
+using Eigen::Sequential;
+// #include <iostream>
+// using std::cout;
+// using std::endl;
 #include <algorithm>
 using std::sort;
 
-typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Mat;
-typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vec;
+typedef Eigen::Matrix<myFloat, Eigen::Dynamic, Eigen::Dynamic> Mat;
+typedef Eigen::Matrix<myFloat, Eigen::Dynamic, 1> Vec;
 typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> uVec;
 typedef Eigen::Matrix<int, Eigen::Dynamic, 1> iVec;
-typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, unsigned int> pMat;
+typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> pMat;
 
+/** compare indices using values in another vector */
 class CompareIndicesByAnotherVectorValues {
     const Vec& _values;
     public: CompareIndicesByAnotherVectorValues(const Vec &values) : _values(values) {}
     public: bool operator() (const unsigned int& a, const unsigned int& b) const { return (_values)(a) < (_values)(b); }
 };
 
-inline uVec sort_indexes(const Vec &v) {
-
+/** given vector v returns a vector of sort indices ordering v in ascending order */
+inline iVec sort_indexes(const Vec &v /**< the vector of values to be sorted*/) {
+    
     CompareIndicesByAnotherVectorValues comp(v);
-
+    
     // initialize original index locations
-    uVec idx(v.size());
-    for (unsigned int i = 0; i != idx.size(); ++i) idx[i] = i;
-
+    int n = static_cast<int>(v.size());
+    iVec idx = iVec::LinSpaced(n,0,n-1);
+    
     // sort indexes based on comparing values in v
     sort(idx.data(), idx.data()+idx.size(), comp);
-
+    
     return idx;
 }
 
+/** construct and evaluate a cubic spline with specified values at given knots */
 class cubicspline {
 private:
   Vec knots;
   Mat coefs;
 public:
+    /** default constructor doing nothing */
     cubicspline() {};
-  cubicspline(Vec x, Vec y, bool endp2nd, Vec der)
+  /** constructor taking knots, values and possibly derivative at end */
+  cubicspline(Vec x,        /**< the vector of knots */
+              Vec y,        /**< the value at the corresponding knot */
+              bool endp2nd, /**< flag indicating endpoints are clamped */
+              Vec der       /**< a 2 vector with the value of the derivative at endpoints */
+             )
   {
     unsigned int n = static_cast<unsigned int>(x.size());
     if (n<2) {
@@ -66,8 +83,8 @@ public:
 
     Vec rhs(n);
     rhs.segment(1,n-2) = 3 * (d.segment(1,n-2) - d.segment(0,n - 2));
-    double der0 = endp2nd ? der(0) : 0;
-    double dern = endp2nd ? der(1) : 0;
+    myFloat der0 = endp2nd ? der(0) : 0;
+    myFloat dern = endp2nd ? der(1) : 0;
     if (endp2nd) {
       A(0,0) = 2 * h[0];
       A(0,1) =  h(0);
@@ -99,9 +116,10 @@ public:
 //      cout << "coefs: " << endl << coefs << endl;
   } //constructor
 
-  Vec operator() (Vec x){
+    /** evaluate the spline at points x. */
+    Vec operator() (Vec x /**< the points at which to evaluate the spline */){
     Vec ret(x.size());
-    uVec s_index = sort_indexes(x);
+    iVec s_index = sort_indexes(x);
     uVec indices;
     indices.setZero(x.size());
     iVec isgood;
@@ -128,21 +146,23 @@ public:
     for (i=0; i<x.size(); i++) {
       if (isgood(i)) {
         j=indices(i);
-        double dx=x(i)-knots(j);
+        myFloat dx=x(i)-knots(j);
         ret(i) = ((coefs(j,3)*dx + coefs(j,2))*dx + coefs(j,1))*dx + coefs(j,0);
       } else
         ret(i) = NAN;
     }
     return ret;
   }
+  /** returns the knots used for the spline */
   Vec get_knots() {
      return knots;
   }
+  /** returns the coefficient matrix of the splines */
   Mat get_coefs() {
       return coefs;
   }
   unsigned int get_n_knots() {
-      return knots.size();
+      return static_cast<unsigned int>(knots.size());
   }
 };
 

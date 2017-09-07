@@ -1,11 +1,21 @@
-// CppNumericalSolver
+/// \file meta.h from Cppn_gaussumericalSolver
+///
+/// \see https://travis-ci.org/PatWie/CppNumericalSolvers
+
 #ifndef META_H
 #define META_H
 
 #include <iostream>
 #include <Eigen/Dense>
+#include <RcppEigen.h>
+
 
 namespace cppoptlib {
+  
+/*
+using std::cout;
+*/
+#define cout Rcpp::Rcout
 
 template <typename T>
 using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
@@ -34,7 +44,7 @@ bool checkConvergence(T val_new, T val_old, Vector<T> grad, Vector<T> x_new, Vec
     }
 
     // gradient crit
-    T g = grad.template lpNorm<Eigen::Infinity>();
+    T g = grad.template lpn_gaussorm<Eigen::Infinity>();
     if (g < gtol)
         return true;
     return false;

@@ -1,4 +1,8 @@
-// CppNumericalSolver
+/// \file neldermeadsolver.h from CppNumericalSolver
+///
+/// This is a slightly modified version of the Patrick Wieschollek's Nelder Mead solver
+/// \see https://travis-ci.org/PatWie/CppNumericalSolvers
+
 #ifndef NELDERMEADSOLVER_H_
 #define NELDERMEADSOLVER_H_
 #include <iostream>
@@ -13,7 +17,7 @@ using std::ofstream;
 
 #include <cmath>
 #include <Eigen/Dense>
-#include "problem.h"
+#include "Problem.h"
 
 
 namespace cppoptlib {
@@ -56,12 +60,11 @@ public:
     const Info &info() { return m_info; }
     
 /**
-   * @brief minimize
-   * @details [long description]
-   *
-   * @param objFunc [description]
+   * @brief minimize the objective function   *
    */
-  void minimize(Problem<T> &objFunc, Vector<T> & x) {
+  void minimize(Problem<T> &objFunc, /**< a functor with the objective function */
+                Vector<T>  & x /**< [in,out] on input, the starting x, on output the found x */
+                ){
 
     const T rho = 1.;    // rho > 0
     const T xi  = 2.;    // xi  > max(rho, 1)
@@ -69,7 +72,7 @@ public:
 
     const size_t DIM = x.rows();
       
-    ofstream trace("nm_trace.txt");
+    ofstream trace("../output/nm_trace.txt");
 
     // create initial simplex
     Matrix<T> x0 = Matrix<T>::Zero(DIM, DIM + 1);
@@ -101,7 +104,7 @@ public:
     while (this->m_info.iterations < maxIter) {
 
       // conv-check
-      double max1 = fabs(f[index[1]] - f[index[0]]);
+        T max1 = fabs(f[index[1]] - f[index[0]]);
         T max2 = (x0.col(index[1]) - x0.col(index[0]) ).template lpNorm<Eigen::Infinity>();
       for (int i = 2; i < DIM + 1; ++i) {
         T tmp1 = fabs(f[index[i]] - f[index[0]]);
@@ -197,8 +200,14 @@ public:
     }
     x = x0.col(index[0]);
   }
-
-  void shrink(Matrix<T> &x, std::vector<int> &index, std::vector<T> &f, Problem<T> &objFunc) {
+private:
+    
+  /** shrink the simplex keeping x0 fixed */
+    void shrink(Matrix<T> &x, /**< [in,out]a with the n_gauss+! nodes of the simplex in the columns */
+                std::vector<int> &index,  /**< an ordering of the input simplex putting values in ascending order */
+                std::vector<T> &f, /**< [out] the resulting values of the objective function */
+                Problem<T> &objFunc /**< [in] the objective function */
+                ) {
 
     const T sig = 0.5;   // 0 < sig < 1
     const int DIM = x.rows();
