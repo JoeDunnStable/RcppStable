@@ -1,20 +1,23 @@
 ///
 /// \file  gauss_kronrod.h
+/// Routines calculating Gauss Kronrod nodes and weights
 /// \author Joseph Dunn
-/// \copyright 2016 Joseph Dunn
+/// \copyright 2016, 2017 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
 #ifndef gauss_kronrod_h
 #define gauss_kronrod_h
-#include "myFloat.h"
 #include <vector>
+#include <iostream>
 
 namespace gauss_kronrod {
 using std::vector;
+using std::ostream;
 
 /// Calculate integration nodes and weights given recursion coeffecients of orthogonal polynomials.
 ///  @see http://people.sc.fsu.edu/~jburkardt/f_src/toms726/toms726.html for the fortran version
 ///
+template<typename myFloat>
 void toms726(const int n_gauss,               ///< [in] the number of nodes
              const vector<myFloat>& a,  ///< [in] x-a is the coefficient of pj in the recursion
              const vector<myFloat>& b,  ///< [in] b is the coefficient of pj-1 in the recursion
@@ -34,6 +37,7 @@ void toms726(const int n_gauss,               ///< [in] the number of nodes
 ///
 ///   Translated to C++ by Joseph Dunn, Dec. 26, 2015
 ///
+template<typename myFloat>
 void r_jacobi01(const int n_gauss,         ///< [in] the number of recurrence coeficients to generate
                 const myFloat a,     ///< [in] the exponent of (1-t) in the weight function
                 const myFloat b,     ///<[in] the exponented of t in the weight function
@@ -54,6 +58,7 @@ void r_jacobi01(const int n_gauss,         ///< [in] the number of recurrence co
 ///   Gautschi, 4-4-2002.
 ///
 
+template<typename myFloat>
 void r_jacobi(const int n_gauss,        ///< [in] the number of recurrence coeficients to generate
               const myFloat a,    ///< [in] the exponent of (1-t) in the weight function
               const myFloat b,    ///<[in] the exponented of t in the weight function
@@ -78,13 +83,55 @@ void r_jacobi(const int n_gauss,        ///< [in] the number of recurrence coefi
 ///   Translated to C++ by Joseph Dunn, Dec. 26 2015
 ///
 ///@see http://dip.sun.ac.za/~laurie/papers/kronrod/kronrod.ps
-
+template<typename myFloat>
 void r_kronrod(int n_gauss,                      ///< [in] the number of nodess in the Jacobi Gauss quadrature formula
                const vector<myFloat>& a0,  ///< [in] the alpha coeficients of the Jacobi Gauss recurrence
                const vector<myFloat>& b0,  ///< [in] the beta coefficients of the Jacobi Gauss recurrence
                vector<myFloat>& a,         ///< [out] the alpha coefficients of the Jacobi-Kronrod recurrence
                vector<myFloat>& b         ///< [out] the beta coefficients of the Jacobi-Kronrod recurrence
 );
+  
+template<typename myFloat> class Kronrod;
+/// Operator to print out class Kronrod
+template<typename myFloat> ostream& operator<< (ostream& os, const Kronrod<myFloat>& k);
+
+/// Class contain the x nodes and weights for gauss kronrod integration
+/// For unit weight function
+template<typename myFloat>
+  class Kronrod {
+  public:
+    const int n_gauss;          ///< the number of nodes for Gauss integration
+    const int verbose;          ///< a indicator for the level of trace output
+    vector<myFloat> x_gauss;   ///< the gauss nodes
+    vector<myFloat> w_gauss;   ///< the gauss weights
+    vector<myFloat> x_kronrod; ///< the kronrod nodes
+    vector<myFloat> w_kronrod; ///< the kronrod weights
+    Kronrod(const int n_gauss, const int verbose=0);
+    template<typename BigFloat>
+    Kronrod(Kronrod<BigFloat>& k_big)
+    : n_gauss(k_big.n_gauss), verbose(k_big.verbose){
+      x_gauss.resize(n_gauss);
+      w_gauss.resize(n_gauss);
+      x_kronrod.resize(2*n_gauss+1);
+      w_kronrod.resize(2*n_gauss+1);
+      for (int i=0; i<n_gauss; ++i) {
+        x_gauss.at(i) = static_cast<myFloat>(k_big.x_gauss.at(i));
+        reset_prec(x_gauss.at(i));
+        w_gauss.at(i) = static_cast<myFloat>(k_big.w_gauss.at(i));
+        reset_prec(w_gauss.at(i));
+      }
+      for (int i=0; i<2*n_gauss+1; ++i) {
+        x_kronrod.at(i) = static_cast<myFloat>(k_big.x_kronrod.at(i));
+        reset_prec(x_kronrod.at(i));
+        w_kronrod.at(i) = static_cast<myFloat>(k_big.w_kronrod.at(i));
+        reset_prec(w_kronrod.at(i));
+      }
+    };
+    friend ostream& operator<< <> (ostream& os, const Kronrod<myFloat>& k);
+  };
+    
 } // namespace gauss_kronrod
+
+#include "gauss_kronrod_impl.h"
 
 #endif // gauss_kronrod_h

@@ -1,9 +1,9 @@
 dstable_holtsmark<-function(x){
   # dstable for alpha=3/2 and beta = 0
-  x[4*x^6/3^6>1]<-NA
+  # x[4*x^6/3^6>1]<-NA
   (1/pi)*gamma(5/3)*genhypergeo(U=c(5/12,11/12),L=c(1/3,1/2,5/6),z=-2^2*x^6/3^6)-
     x^2/(3*pi)*genhypergeo(U=c(3/4,1,5/4),L=c(2/3,5/6,7/6,4/3),z=-2^2*x^6/3^6)+
-    7*x^4/(3^4*pi)*gamma(4/3)*genhypergeo(U=c(13/12,19/12),L=c(7/6,3/2,5/3),z=-2^2*x^6/3^6)
+    7*x^4/(3^4*pi)*gamma(4/3)*genhypergeo(U=c(13/12,19/12),L=c(7/6,3/2,5/3),z=-2^2*x^6/3^6,debug=TRUE)
 }
 
 dstable_taleb<-function(x){

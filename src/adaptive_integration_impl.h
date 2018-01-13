@@ -1,24 +1,18 @@
-/// \file adaptive_integration.cpp
+/// \file adaptive_integration_impl.h
+/// Implementation of the classes declared in adaptive_integration.h
+/// Included in adaptive_integration.h when LIBRARY is defined.
 /// \author Joseph Dunn
-/// \copyright 2016 Joseph Dunn
+/// \copyright 2016, 2017 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
 #include <limits>
 #include <algorithm>
-#include "adaptive_integration.h"
 #include "gauss_kronrod.h"
 #include <stdio.h>
-#include <iostream>
 #include <iomanip>
 
 namespace adaptive_integration {
   
-/*
-using std::cout;
-using std::cerr;
-*/
-#define cout Rcpp::Rcout
-#define cerr Rcpp::Rcerr	
 using std::endl;
 using std::setw;
 using std::setprecision;
@@ -31,44 +25,6 @@ using std::max;
 using std::min;
 using namespace gauss_kronrod;
   
-void Machine::initialize() {
-  digits10 = std::numeric_limits<myFloat>::digits10;
-  epsilon = std::numeric_limits<myFloat>::epsilon();
-  min = std::numeric_limits<myFloat>::min();
-  max = std::numeric_limits<myFloat>::max();
-  large_exp_arg = log(max);
-  pi = const_pi();
-  pi2 = pi/2;
-  PosInf = std::numeric_limits<myFloat>::infinity();
-  NegInf = -PosInf;
-  initialized = true;
-}
-  
-void Machine::print(ostream& os){
-  int old_precision = os.precision(digits10);
-  os << "Machine constants:" << endl << endl
-     << "digits10 =      " << digits10 << endl
-     << "epsilon =       " << epsilon << endl
-     << "min =           " << min << endl
-     << "max =           " << max << endl
-     << "large_exp_arg = " << large_exp_arg << endl
-     << "pi =            " << pi << endl
-     << "pi2 =           " << pi2 << endl
-     << "PosInf =        " << PosInf << endl
-     << "NegInf =        " << NegInf << endl << endl;
-  os.precision(old_precision);
-}
-  
-bool Machine::initialized{false};
-int Machine::digits10;
-myFloat Machine::epsilon;
-myFloat Machine::min;
-myFloat Machine::max;
-myFloat Machine::large_exp_arg;
-myFloat Machine::pi;
-myFloat Machine::pi2;
-myFloat Machine::PosInf;
-myFloat Machine::NegInf;
 
 template<typename T>
 class sort_data {
@@ -83,59 +39,19 @@ bool sd_lt(const sort_data<T> &lhs,const sort_data<T>& rhs) {
     return lhs.a < rhs.a;
 }
 
-IntegrationController::IntegrationController(const bool noext, const int n_gauss,
-                                               const myFloat epsabs, const myFloat epsrel, const int limit, const int verbose)
-  : noext(noext),  n_gauss(n_gauss), limit(limit), verbose(verbose), epsabs(epsabs), epsrel(epsrel), subs(limit) {
-    myFloat& epmach = Machine::epsilon;
-      if (epsabs==0 && epsrel < 50*epmach) {
-        IntegrationController::epsrel = 50*epmach;
-      cerr << "IntegrationController: Resetting epsrel to minimum allowable: " << IntegrationController::epsrel << endl;
-    }
-    vector<myFloat> x_gauss(n_gauss);  // We don't keep it because the nodes are in x_kronrod
-    w_gauss.resize(n_gauss);
-    x_kronrod.resize(2*n_gauss+1);
-    w_kronrod.resize(2*n_gauss+1);
-    int M = std::max(2*n_gauss,int(ceil(3.*n_gauss/2.)+1));
-    vector<myFloat> a0(M);
-    vector<myFloat> b0(M);
-    r_jacobi01(M,myFloat(0),myFloat(0), a0, b0);
-    toms726(n_gauss, a0, b0, x_gauss, w_gauss, verbose>4);
-    vector<myFloat> a(2*n_gauss+1);
-    vector<myFloat> b(2*n_gauss+1);
-    r_kronrod(n_gauss, a0, b0, a, b);
-    toms726(2*n_gauss+1, a, b, x_kronrod, w_kronrod, verbose > 4);
-    for (int i = 0; i<n_gauss; i++) {
-      x_gauss.at(i)=2*x_gauss.at(i)-1;
-      w_gauss.at(i)=2*w_gauss.at(i);
-    }
-    
-    for (int i = 0; i<2*n_gauss+1; i++) {
-      x_kronrod.at(i) = 2*x_kronrod.at(i)-1;
-      w_kronrod.at(i) = 2*w_kronrod.at(i);
-    }
-    ;
-  }
-
-ostream& operator<< (ostream& os, const IntegrationController& ctl) {
-    os << setw(15) << "noext = " << ctl.noext << endl
-    << setw(15) << "n_gauss = " << ctl.n_gauss << endl
-    << setw(15) << "epsabs = " << ctl.epsabs << endl
-    << setw(15) << "epsrel = " << ctl.epsrel << endl
-    << setw(15) << "limit = " << ctl.limit << endl;
-    os << "Gauss nodes and weights: " << endl << endl;
-    for (int i=0; i<ctl.n_gauss; i++) {
-        os << setw(25) << setprecision(16) << ctl.x_kronrod.at(1+2*i)
-        << setw(25) << setprecision(16) << ctl.w_gauss.at(i) << endl;
-    }
-    os << endl << "Kronrod nodes and weights:" << endl << endl;
-    for (int i=0; i<2*ctl.n_gauss+1; i++)
-        os << setw(25) << setprecision(16) << ctl.x_kronrod.at(i)
-        << setw(25) << setprecision(16) << ctl.w_kronrod.at(i) << endl;
-    return os;
+template<typename myFloat>
+ostream& operator<< (ostream& os, const IntegrationController<myFloat>& ctl) {
+  os << setw(15) << "noext = " << ctl.noext << endl
+     << setw(15) << "epsabs = " << ctl.epsabs << endl
+     << setw(15) << "epsrel = " << ctl.epsrel << endl
+     << setw(15) << "limit = " << ctl.limit << endl
+     << ctl.g_k << endl;
+  return os;
     
 }
 
-void print_subs_summary(ostream& os, const vector<Subinterval>& subs, const int last, const vector<myFloat>& points) {
+template<typename myFloat>
+void print_subs_summary(ostream& os, const vector<Subinterval<myFloat> >& subs, const int last, const vector<myFloat>& points) {
   if (last==0) return;
   if (subs.size()<last) {
     throw std::range_error("print_subs: last is greater than the length of subs.");
@@ -186,7 +102,8 @@ void print_subs_summary(ostream& os, const vector<Subinterval>& subs, const int 
   }
 }
 
-void print_subs(ostream& os, const vector<Subinterval>& subs, const int last, const vector<myFloat>& points) {
+template<typename myFloat>
+void print_subs(ostream& os, const vector<Subinterval<myFloat> >& subs, const int last, const vector<myFloat>& points) {
   if (last==0) return;
   if (subs.size()<last) {
     throw std::range_error("print_subs: last is greater than the length of subs.");
@@ -270,6 +187,7 @@ myFloat eps_mat[50][50];
 /// @author piessens,robert,appl. math. & progr. div. - k.u.leuven
 /// @author de doncker,elise,appl. math & progr. div. - k.u.leuven
 ///
+template<typename myFloat>
 class EpsilonTable {
 public:
     int n;                         ///< index of new element in the first column
@@ -287,7 +205,8 @@ public:
     EpsilonTable(int size) : n(0), epsilon_table(size), result(NAN), res3la(3), nres(0){}
 };
 
-void EpsilonTable::update(myFloat new_result) {
+template<typename myFloat>
+void EpsilonTable<myFloat>::update(myFloat new_result) {
   //
   //           list of major variables
   //           -----------------------
@@ -309,8 +228,8 @@ void EpsilonTable::update(myFloat new_result) {
   //
   //***first executable statement update
     
-  myFloat& oflow = Machine::max;
-  myFloat& epmach = Machine::epsilon;
+  myFloat oflow = std::numeric_limits<myFloat>::max();
+  myFloat epmach = std::numeric_limits<myFloat>::epsilon();
   epsilon_table.at(n) = new_result;
   ++n;
   nres++;
@@ -320,7 +239,7 @@ void EpsilonTable::update(myFloat new_result) {
     abserr = std::max<myFloat>(abserr, 5 * epmach * fabs(result));
     return;
   }
-  int limexp = epsilon_table.size()-2;
+  int limexp = static_cast<int>(epsilon_table.size())-2;
   epsilon_table.at(n+1) = epsilon_table.at(n-1);
   int newelm = (n - 1) / 2;
   epsilon_table.at(n-1) = oflow;
@@ -467,8 +386,8 @@ void EpsilonTable::update(myFloat new_result) {
 */
 }
 
-
-void Subinterval::integrate(Integrand f,
+template<typename myFloat>
+void Subinterval<myFloat>::integrate(Integrand f,
                        void* ex,
                        const int n_gauss,
                        const std::vector<myFloat>& w_gauss,
@@ -496,8 +415,8 @@ void Subinterval::integrate(Integrand f,
     //***first executable statement  integrate_myFloat
     //"
     
-    myFloat& epmach = Machine::epsilon;
-    myFloat& uflow = Machine::min;
+    myFloat epmach = std::numeric_limits<myFloat>::epsilon();
+    myFloat uflow = std::numeric_limits<myFloat>::min();
     myFloat centr =  (a + b) / 2;
     myFloat hlgth = (b - a) / 2;
     myFloat dhlgth = fabs(hlgth);
@@ -541,8 +460,8 @@ void Subinterval::integrate(Integrand f,
     }
 }
 
-void
-IntegrationController::integrate(Integrand f,
+template<typename myFloat>
+void IntegrationController<myFloat>::integrate(typename Subinterval<myFloat>::Integrand f,
                                  void* ex,
                                  const vector<myFloat>& points,
                                  myFloat& result,
@@ -589,9 +508,9 @@ IntegrationController::integrate(Integrand f,
     for (int j=0; j<50; j++)
       eps_mat[i][j]=0;
 */
-  myFloat& epmach = Machine::epsilon;
-  myFloat& uflow = Machine::min;
-  myFloat& oflow = Machine::max;
+  myFloat epmach = std::numeric_limits<myFloat>::epsilon();
+  myFloat uflow = std::numeric_limits<myFloat>::min();
+  myFloat oflow = std::numeric_limits<myFloat>::max();
   myFloat min_length = oflow;
   //
   //            test on validity of parameters
@@ -616,7 +535,7 @@ IntegrationController::integrate(Integrand f,
         result =0;
         return;
   }
-  for (vector<myFloat>::const_iterator ppoint=points.begin(); ppoint < points.end()-1; ppoint++)
+  for (typename vector<myFloat>::const_iterator ppoint=points.begin(); ppoint < points.end()-1; ppoint++)
     if (*ppoint >= *(ppoint+1)) {
         cerr << "IntegrationController::integrate: points are either not distinct or not in ascending order" << endl;
         termination_code = bad_input;
@@ -633,7 +552,7 @@ IntegrationController::integrate(Integrand f,
   for (i=1; i<=nint; i++) {
     subs.at(i-1).a = points.at(i-1);
     subs.at(i-1).b = points.at(i);
-    subs.at(i-1).integrate(f, ex, n_gauss, w_gauss, x_kronrod, w_kronrod);
+    subs.at(i-1).integrate(f, ex, g_k.n_gauss, g_k.w_gauss, g_k.x_kronrod, g_k.w_kronrod);
     abserr += subs.at(i-1).e;
     result += subs.at(i-1).r;
     if (subs.at(i-1).e == subs.at(i-1).defabs && subs.at(i-1).e != 0.0e+00) {
@@ -651,13 +570,13 @@ IntegrationController::integrate(Integrand f,
   //           test on accuracy.
   //
   last = nint;
-  neval = (2*n_gauss+1) * nint;
+  neval = (2*g_k.n_gauss+1) * nint;
   myFloat dres = fabs(result);
   myFloat errbnd = std::max<myFloat>(epsabs, epsrel * dres);
   if (abserr <= 100 * epmach * resabs && abserr > errbnd) {
     termination_code = roundoff_error;
   }
-  SubintervalComp sub_comp(noext ? limit : 1);
+  SubintervalComp<myFloat> sub_comp(noext ? limit : 1);
   make_heap(subs.begin(),subs.begin()+nint, sub_comp);
   if (limit < npts) {
     termination_code = maximum_subdivisions;
@@ -671,7 +590,7 @@ IntegrationController::integrate(Integrand f,
   //
   myFloat correc = 0.;
   myFloat area = result;
-  EpsilonTable eps_table(52);
+  EpsilonTable<myFloat> eps_table(52);
   int ktmin = 0;
   bool keep_level_max = false;
   bool noext = this->noext;
@@ -683,7 +602,7 @@ IntegrationController::integrate(Integrand f,
   int ierro = 0;
   abserr = oflow;
   bool f_doesnt_change_sign =(dres >= (1 - 50 * epmach) * resabs);
-  bool final_check, test_for_divergence, need_sum;
+  bool final_check{noext ? false : true},  need_sum{noext ? true : false};
   //
   //           main do-loop
   //           ------------
@@ -711,13 +630,13 @@ IntegrationController::integrate(Integrand f,
     subs.at(maxerr-1).b = b1;
     subs.at(last-1).a = a2;
     subs.at(last-1).b = b2;
-    subs.at(maxerr-1).integrate(f, ex, n_gauss, w_gauss, x_kronrod, w_kronrod);
-    subs.at(last-1).integrate(f, ex, n_gauss, w_gauss, x_kronrod, w_kronrod);
+    subs.at(maxerr-1).integrate(f, ex, g_k.n_gauss, g_k.w_gauss, g_k.x_kronrod, g_k.w_kronrod);
+    subs.at(last-1).integrate(f, ex, g_k.n_gauss, g_k.w_gauss, g_k.x_kronrod, g_k.w_kronrod);
     //
     //           improve previous approximations to integral
     //           and error and test for accuracy.
     
-    neval += 2*(2*n_gauss+1);
+    neval += 2*(2*g_k.n_gauss+1);
     myFloat area12 = subs.at(maxerr-1).r + subs.at(last-1).r;
     myFloat erro12 = subs.at(maxerr-1).e + subs.at(last-1).e;
     errsum += erro12 - errmax;
@@ -777,7 +696,7 @@ IntegrationController::integrate(Integrand f,
     if (max<myFloat>(fabs(a1), fabs(b2)) <= (1 + 100 * epmach) * (fabs(a2) + 1000 * uflow)) {
       termination_code = bad_integrand;
     }
-    final_check=true;
+    final_check= noext ? false : true;
     if (errsum <= errbnd) {
       // ***jump out of do-loop
  //     cout << "IntegrationController::integrate: Success errsum <= errbnd" << endl;
@@ -822,24 +741,28 @@ IntegrationController::integrate(Integrand f,
             break;
           }
         }
-        //
-        //           prepare bisection of the smallest interval.
-        //
         if (eps_table.n == 1) {
 //          cout << "Performed extrapolation but eps_table.n == 1" << endl;
           noext = true;
           sub_comp.level_max = limit;
+          make_heap(subs.begin(),subs.begin()+last, sub_comp);
         }
         if (termination_code >= extrapolation_roundoff_error) {
 //          cout << "IntegrationController::integrate: Aborting because of roundoff error in extrapolation table" << endl;
           break;
         }
       }
+      //
+      //           prepare bisection of the smallest interval.
+      //
       keep_level_max = false;
       erlarg = errsum;
       ++sub_comp.level_max;
       make_heap(subs.begin(),subs.begin()+last, sub_comp);
     } else {
+      //
+      //           keep working on intervals > level_max
+      //
       keep_level_max = true;
     }
   } // main do loop
@@ -848,6 +771,7 @@ IntegrationController::integrate(Integrand f,
   //           ---------------------
   //
   if (final_check){
+    bool test_for_divergence{true};
     if (abserr == oflow) {
       test_for_divergence=false;
       need_sum=true;
@@ -899,14 +823,17 @@ IntegrationController::integrate(Integrand f,
   if (need_sum){
 //    cout << "Calculating sum" << endl;
     result = 0.0e+00;
+    errsum = 0;
     for (int k=1; k<=last; k++) {
       result += subs.at(k-1).r;
+      errsum += subs.at(k-1).e;
     }
     abserr = errsum;
   }
 }
   
-  myFloat Integral::operator() () {
+  template<typename myFloat>
+  myFloat Integral<myFloat>::operator() () {
     
     if (verbose==4){
       cout << endl
@@ -923,7 +850,7 @@ IntegrationController::integrate(Integrand f,
       }
       
       if (termination_code > 0)
-        cout << msgs[termination_code] << ":" << endl;
+        cout << msg() << ":" << endl;
       cout << "Integral from " << points.front()
       << " to " << points.back()
       << " = " << result
@@ -938,10 +865,6 @@ IntegrationController::integrate(Integrand f,
     }
     return result;
   }
-  
-  string Integral::msgs[]={"OK","Maximum subdivisions reached","Roundoff error detected",
-    "Bad integrand behavior","Roundoff error in the extrapolation table",
-    "Integral probably divergent","Input is invalid"};
   
   
   

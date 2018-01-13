@@ -17,8 +17,8 @@ qstable_cpp <- function(p, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbl
     .Call('_stablecpp_qstable_cpp', PACKAGE = 'stablecpp', p, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, integ_tol, subdivisions, verbose)
 }
 
-ddx_sdstable <- function(x, alpha, beta, tol, subdivisions, verbose) {
-    .Call('_stablecpp_ddx_sdstable', PACKAGE = 'stablecpp', x, alpha, beta, tol, subdivisions, verbose)
+ddx_sdstable <- function(x, alpha, beta, pm, tol, subdivisions, verbose) {
+    .Call('_stablecpp_ddx_sdstable', PACKAGE = 'stablecpp', x, alpha, beta, pm, tol, subdivisions, verbose)
 }
 
 rstable_cpp <- function(alpha, beta, gamma, delta, pm, u1, u2) {
@@ -33,7 +33,7 @@ stable_fit_cpp <- function(y, type, quick) {
     .Call('_stablecpp_stable_fit_cpp', PACKAGE = 'stablecpp', y, type, quick)
 }
 
-g_map_dataframe <- function(x, alpha, beta) {
-    .Call('_stablecpp_g_map_dataframe', PACKAGE = 'stablecpp', x, alpha, beta)
+g_map_dataframe <- function(type, x, alpha, beta) {
+    .Call('_stablecpp_g_map_dataframe', PACKAGE = 'stablecpp', type, x, alpha, beta)
 }
 

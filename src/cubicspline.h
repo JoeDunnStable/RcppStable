@@ -1,34 +1,46 @@
 /// \file cubicspline.h
+/// General purpose cubic splines
 /// \author Joseph Dunn
-/// \copyright 2016 Joseph Dunn
+/// \copyright 2016, 2017 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
+
+#ifndef CUBICSPLINE_H
+#define CUBICSPLINE_H
 
 #include "myFloat.h"
 #include <Eigen/Dense>
 using Eigen::Sequential;
-// #include <iostream>
-// using std::cout;
-// using std::endl;
 #include <algorithm>
 using std::sort;
 
-typedef Eigen::Matrix<myFloat, Eigen::Dynamic, Eigen::Dynamic> Mat;
-typedef Eigen::Matrix<myFloat, Eigen::Dynamic, 1> Vec;
+#define Mat Eigen::Matrix<myFloat, Eigen::Dynamic, Eigen::Dynamic>
+#define Vec Eigen::Matrix<myFloat, Eigen::Dynamic, 1>
 typedef Eigen::Matrix<unsigned int, Eigen::Dynamic, 1> uVec;
 typedef Eigen::Matrix<int, Eigen::Dynamic, 1> iVec;
 typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, int> pMat;
 
 /** compare indices using values in another vector */
+template<typename myFloat>
 class CompareIndicesByAnotherVectorValues {
-    const Vec& _values;
-    public: CompareIndicesByAnotherVectorValues(const Vec &values) : _values(values) {}
-    public: bool operator() (const unsigned int& a, const unsigned int& b) const { return (_values)(a) < (_values)(b); }
+    const Vec& _values;     ///< the input values driving the ordering
+public:
+  /// Constructor which simply copies the values
+  CompareIndicesByAnotherVectorValues(
+                                      const Vec &values ///< [in] reference to input values
+                                      )
+     : _values(values) {}
+    /// Given two indices, compare the values
+    bool operator() (
+                     const unsigned int& a,  ///< [in] reference to index for lhs
+                     const unsigned int& b   ///< [in] reference to index for rhs
+                     ) const { return (_values)(a) < (_values)(b); }
 };
 
 /** given vector v returns a vector of sort indices ordering v in ascending order */
+template<typename myFloat>
 inline iVec sort_indexes(const Vec &v /**< the vector of values to be sorted*/) {
     
-    CompareIndicesByAnotherVectorValues comp(v);
+    CompareIndicesByAnotherVectorValues<myFloat> comp(v);
     
     // initialize original index locations
     int n = static_cast<int>(v.size());
@@ -41,18 +53,19 @@ inline iVec sort_indexes(const Vec &v /**< the vector of values to be sorted*/) 
 }
 
 /** construct and evaluate a cubic spline with specified values at given knots */
-class cubicspline {
+template<typename myFloat>
+class CubicSpline {
 private:
   Vec knots;
   Mat coefs;
 public:
     /** default constructor doing nothing */
-    cubicspline() {};
+    CubicSpline() {};
   /** constructor taking knots, values and possibly derivative at end */
-  cubicspline(Vec x,        /**< the vector of knots */
-              Vec y,        /**< the value at the corresponding knot */
-              bool endp2nd, /**< flag indicating endpoints are clamped */
-              Vec der       /**< a 2 vector with the value of the derivative at endpoints */
+  CubicSpline(const Vec& x,        /**< [in] the vector of knots */
+              const Vec& y,        /**< [in] the value at the corresponding knot */
+              const bool endp2nd, /**< [in] flag indicating endpoints are clamped */
+              const Vec& der       /**< [in] a 2 vector with the value of the derivative at endpoints */
              )
   {
     unsigned int n = static_cast<unsigned int>(x.size());
@@ -117,7 +130,7 @@ public:
   } //constructor
 
     /** evaluate the spline at points x. */
-    Vec operator() (Vec x /**< the points at which to evaluate the spline */){
+    Vec operator() (const Vec& x /**< [in] the points at which to evaluate the spline */){
     Vec ret(x.size());
     iVec s_index = sort_indexes(x);
     uVec indices;
@@ -161,8 +174,13 @@ public:
   Mat get_coefs() {
       return coefs;
   }
+  
+  /** returns the number of knots in the spline */
   unsigned int get_n_knots() {
       return static_cast<unsigned int>(knots.size());
   }
 };
 
+#undef Mat
+#undef Vec
+#endif //CUBICSPLINE_H

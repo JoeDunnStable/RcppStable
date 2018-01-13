@@ -1,9 +1,9 @@
-/// \file stable_distribution_fit.cpp
+/// \file stable_distribution_fit_impl.h
+/// Implementation of routines to fit stable distribution
+/// Included in stable_distribution_fit.h when LIBRARY is defined
 /// \author Joseph Dunn
-/// \copyright 2016 Joseph Dunn
+/// \copyright 2016, 2017 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
-
-#if !defined(MPREAL)
 
 #include "stable_distribution_fit.h"
 
@@ -12,7 +12,6 @@
 
 #include <chrono>
 
-#include <iostream>
 #include <iomanip>
 #include <fstream>
 #include <sstream>
@@ -44,16 +43,10 @@ namespace boost { namespace math {
     return mycdf(c.dist, -c.param);
   }
   
-} } // n_gaussamespace boost::math
+} } // namespace boost::math
 
 namespace stable_distribution {
   
-/*
-using std::cout;
-using std::endl;
-*/
-#define cout Rcpp::Rcout
-#define cerr Rcpp::Rcerr
 using std::setw;
 using std::setprecision;
 using std::fixed;
@@ -78,7 +71,8 @@ using cppoptlib::NelderMeadSolver;
 
 using boost::math::mycdf;
 
-DstableQuick::DstableQuick(StandardStableDistribution *std_stable_dist): std_stable_dist(std_stable_dist), dist_t(std_stable_dist->alpha){
+template<typename myFloat>
+DstableQuick<myFloat>::DstableQuick(StandardStableDistribution<myFloat> *std_stable_dist): std_stable_dist(std_stable_dist), dist_t(std_stable_dist->alpha){
   // the splines don't work well near the mode so we'll use pdf for everything near the mode
   myFloat x_mode=std_stable_dist->mode(1e-9).first;
   myFloat p_break_0 = 1e-6;
@@ -135,7 +129,7 @@ DstableQuick::DstableQuick(StandardStableDistribution *std_stable_dist): std_sta
     if (pt_knot(i) != 0 && pt_knot(i) != 1) {
       myFloat x_tmp = quantile(dist_t,pt_knot(i));
       myFloat y_tmp = std_stable_dist->pdf(x_tmp,true);
-      if (isfinite(y_tmp)) {
+      if (boost::math::isfinite(y_tmp)) {
         pt_knot(j)=pt_knot(i);
         y_knot(j) = y_tmp - log(pdf(dist_t, x_tmp));
         ++j;
@@ -151,7 +145,7 @@ DstableQuick::DstableQuick(StandardStableDistribution *std_stable_dist): std_sta
     x_break_0 = x_break_3;  // Do not use splinelow
   }
   Vec der(2);  der << 0,0;
-  spline_low = cubicspline(pt_knot, y_knot, false, der);
+  spline_low = CubicSpline<myFloat>(pt_knot, y_knot, false, der);
   
   myFloat pt_break_7 = mycdf(complement(dist_t, x_break_7));
   myFloat pt_break_6 = mycdf(complement(dist_t,x_break_6));
@@ -193,7 +187,7 @@ DstableQuick::DstableQuick(StandardStableDistribution *std_stable_dist): std_sta
     if (pt_knot(i) != 0 && pt_knot(i) != 1) {
       myFloat x_tmp = quantile(complement(dist_t,pt_knot(i)));
       myFloat y_tmp = std_stable_dist->pdf(x_tmp,true);
-      if (isfinite(y_tmp)) {
+      if (boost::math::isfinite(y_tmp)) {
         pt_knot(j)=pt_knot(i);
         y_knot(j) = y_tmp - log(pdf(dist_t,x_tmp));
         ++j;
@@ -208,15 +202,16 @@ DstableQuick::DstableQuick(StandardStableDistribution *std_stable_dist): std_sta
   } else {
     x_break_7 = x_break_4;
   }
-  spline_high = cubicspline(pt_knot, y_knot, false, der);
+  spline_high = CubicSpline<myFloat>(pt_knot, y_knot, false, der);
 }
 
 // This function returns an approximation to the log likelihood of the observations x
-Vec DstableQuick::operator() (const Vec& x)
+template<typename myFloat>
+Vec DstableQuick<myFloat>::operator() (const Vec& x)
 {
   unsigned int n = static_cast<unsigned int>(x.size());
   Vec ret(n);
-  if (std_stable_dist->alpha < 2 - Machine::epsilon*10){
+  if (std_stable_dist->alpha < 2 - std::numeric_limits<myFloat>::epsilon()*10){
     pMat idx(sort_indexes(x));
     Vec xx = idx.inverse() * x;  //xx contains the values from x sorted in ascending order
     unsigned int n0;
@@ -251,15 +246,16 @@ Vec DstableQuick::operator() (const Vec& x)
     return idx * ret;
   } else {
     for (int i=0; i<n; ++i) {
-      ret(i) = -x(i)*x(i)/4 -log(2) -log(StandardStableDistribution::pi)/2;
+      ret(i) = -x(i)*x(i)/4 -log(2) -log(StandardStableDistribution<myFloat>::pi)/2;
     }
     return ret;
   }
 }
 
-myFloat DstableQuick::operator() (const myFloat& x)
+template<typename myFloat>
+myFloat DstableQuick<myFloat>::operator() (const myFloat& x)
 {
-  if (std_stable_dist->alpha < 2 - Machine::epsilon * 10){
+  if (std_stable_dist->alpha < 2 - std::numeric_limits<myFloat>::epsilon() * 10){
     if (x<x_break_0) {
       return std_stable_dist->pdf(x, true);
     } else if (x >= x_break_7){
@@ -279,11 +275,12 @@ myFloat DstableQuick::operator() (const myFloat& x)
       return spline_high(pt_x_high)(0) + ln_dt_x_high;
     }
   } else {
-    return -x*x/4 -log(2) -log(StandardStableDistribution::pi)/2;
+    return -x*x/4 -log(2) -log(StandardStableDistribution<myFloat>::pi)/2;
   }
 }
 
-Vec DstableQuick::pt(const Vec& x) {
+template<typename myFloat>
+Vec DstableQuick<myFloat>::pt(const Vec& x) {
   Vec ret(x.size());
   for (int i=0; i<x.size(); i++) {
     if (x(i) >=x_break_0 && x(i) < x_break_3) ret(i) = mycdf(dist_t,x(i));
@@ -293,21 +290,22 @@ Vec DstableQuick::pt(const Vec& x) {
   return ret;
 }
 
+template<typename myFloat>
 Vec pdf_quick(const Vec& x, const myFloat alpha, const myFloat beta,
               const Vec& gamma, const Vec& delta, const int pm,
-              int log_flag, IntegrationController& ctl, const int verbose){
+              int log_flag, Controllers<myFloat> ctls, const int verbose){
   parameter_check("pdf", x, alpha, beta, gamma, delta, pm);
   
   // Switch to S0 parameterization
   Vec gamma0(gamma.size());
   Vec delta0(delta.size());
-  parameter_switch(alpha, beta, gamma, delta, pm, ctl, verbose,
+  switch_to_S0(alpha, beta, gamma, delta, pm, ctls, verbose,
                    gamma0, delta0);
   
   // Shift and Scale:
   Vec x_std = (x - delta0).array()/gamma0.array();
-  StandardStableDistribution std_stable_dist(alpha, beta, ctl, verbose);
-  DstableQuick std_stable_dist_quick(&std_stable_dist);
+  StandardStableDistribution<myFloat> std_stable_dist(alpha, beta, ctls, verbose);
+  DstableQuick<myFloat> std_stable_dist_quick(&std_stable_dist);
   Vec ll = std_stable_dist_quick(x_std);
   if (log_flag)
     return ll.array() - gamma0.array().log();
@@ -315,16 +313,17 @@ Vec pdf_quick(const Vec& x, const myFloat alpha, const myFloat beta,
     return exp(ll.array())/gamma0.array();
 }
 
+template<typename myFloat>
 myFloat capped_pdf(const Vec& y, const myFloat alpha, const myFloat beta, const myFloat gamma, const myFloat delta,
-                        const bool quick, IntegrationController &ctl, const int verbose) {
-  StandardStableDistribution std_stable_dist(alpha, beta, ctl, verbose);
+                        const bool quick, Controllers<myFloat> ctls, const int verbose) {
+  StandardStableDistribution<myFloat> std_stable_dist(alpha, beta, ctls, verbose);
   Vec yy = (y.array() - delta)/gamma;
   myFloat log_gamma = log(gamma);
   myFloat out =0;
   myFloat p_low = std_stable_dist.cdf(-1e300, true, true);
   myFloat p_high = std_stable_dist.cdf(1e300, false, true);
   if (quick) {
-    DstableQuick std_stable_dist_quick(&std_stable_dist);
+    DstableQuick<myFloat> std_stable_dist_quick(&std_stable_dist);
     int j = 0;
     for (int i=0; i<yy.size(); i++) {
       if (yy(i) > 1e300)
@@ -352,6 +351,7 @@ myFloat capped_pdf(const Vec& y, const myFloat alpha, const myFloat beta, const 
   return out;
 }
 
+template<typename myFloat>
 class McCullochFit : public Problem<myFloat> {
 public:
   myFloat q_kurt;
@@ -360,19 +360,22 @@ public:
   myFloat alpha_max;
   ostream *trace;
   myFloat dbltol;
-  IntegrationController& ctl;
+  Controllers<myFloat> ctls;
   int verbose;
   myFloat value(const Vec &par) {
     myFloat alpha = par_to_alpha(par(0));
-    myFloat beta = atan(par(1))/StandardStableDistribution::pi2;
+    myFloat beta = atan(par(1))/StandardStableDistribution<myFloat>::pi2;
     *trace << setw(18) << setprecision(8) << alpha
     << setw(18) << setprecision(8) << beta;
     (*trace).flush();
-    StandardStableDistribution std_stable_dist(alpha, beta, ctl, verbose);
+    StandardStableDistribution<myFloat> std_stable_dist(alpha, beta, ctls, verbose);
     Vec probs(5); probs << .05, .25, .5, .75, .95;
+    Vec gamma; gamma.setOnes(probs.size());
+    Vec delta; delta.setZero(probs.size());
+    Parameterization pm = S0;
     bool lower_tail = true;
     bool log_p = false;
-    Vec qs = std_quantile(probs, alpha, beta, lower_tail, log_p, dbltol, ctl, verbose);
+    Vec qs = quantile(probs, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, ctls, verbose);
     myFloat qs_kurt = (qs(4) - qs(0))/(qs(3)-qs(1));
     myFloat qs_skew = (qs(4) -2 * qs(2) + qs(0))/(qs(4)-qs(0));
     *trace << setw(18) << setprecision(8) << qs_kurt
@@ -383,23 +386,24 @@ public:
   }
   myFloat alpha_to_par(const myFloat alpha) {
     myFloat a = min(alpha_max,max(alpha_min,alpha));
-    return tan((alpha_max-a)/(alpha_max-alpha_min)*(-StandardStableDistribution::pi2)+(a-alpha_min)/(alpha_max-alpha_min)*StandardStableDistribution::pi2);
+    return tan((alpha_max-a)/(alpha_max-alpha_min)*(-StandardStableDistribution<myFloat>::pi2)+(a-alpha_min)/(alpha_max-alpha_min)*StandardStableDistribution<myFloat>::pi2);
     
   }
   myFloat par_to_alpha(const myFloat par) {
-    return alpha_min + (alpha_max-alpha_min)*(.5+atan(par)/StandardStableDistribution::pi);
+    return alpha_min + (alpha_max-alpha_min)*(.5+atan(par)/StandardStableDistribution<myFloat>::pi);
   }
   myFloat norm(const Vec& par1, const Vec& par2) {
     Vec del(2);
     del(0) = par_to_alpha(par1(0)) - par_to_alpha(par2(0));
-    del(1) = (atan(par1(1))-atan(par2(1)))/StandardStableDistribution::pi2;
+    del(1) = (atan(par1(1))-atan(par2(1)))/StandardStableDistribution<myFloat>::pi2;
     return del.array().abs().maxCoeff();
   }
   
-  McCullochFit(const myFloat q_kurt, const myFloat q_skew, const myFloat alpha_min, const myFloat alpha_max, ostream *trace, const myFloat dbltol, IntegrationController &ctl, const int verbose )
-  : q_kurt(q_kurt), q_skew(q_skew), alpha_min(alpha_min), alpha_max(alpha_max), trace(trace), dbltol(dbltol), ctl(ctl), verbose(verbose) {};
+  McCullochFit(const myFloat q_kurt, const myFloat q_skew, const myFloat alpha_min, const myFloat alpha_max, ostream *trace, const myFloat dbltol, Controllers<myFloat> ctls, const int verbose )
+  : q_kurt(q_kurt), q_skew(q_skew), alpha_min(alpha_min), alpha_max(alpha_max), trace(trace), dbltol(dbltol), ctls(ctls), verbose(verbose) {};
 };
 
+template<typename myFloat>
 class DunnFit : public Problem<myFloat> {
 public:
   myFloat q_kurt;
@@ -409,19 +413,22 @@ public:
   myFloat alpha_max;
   ostream *trace;
   myFloat dbltol;
-  IntegrationController &ctl;
+  Controllers<myFloat> ctls;
   int verbose;
   myFloat value(const Vec &par) {
     myFloat alpha = par_to_alpha(par(0));
-    myFloat beta = atan(par(1))/StandardStableDistribution::pi2;
+    myFloat beta = atan(par(1))/StandardStableDistribution<myFloat>::pi2;
     *trace << setw(18) << setprecision(8) << alpha
     << setw(18) << setprecision(8) << beta;
     (*trace).flush();
-    StandardStableDistribution std_stable_dist(alpha, beta, ctl, verbose);
+    StandardStableDistribution<myFloat> std_stable_dist(alpha, beta, ctls, verbose);
     Vec probs(5); probs << .05, .25, .5, .75, .95;
+    Vec gamma; gamma.setOnes(probs.size());
+    Vec delta; delta.setZero(probs.size());
+    Parameterization pm = S0;
     bool lower_tail = true;
     bool log_p = false;
-    Vec qs = std_quantile(probs, alpha, beta, lower_tail, log_p, dbltol, ctl, verbose);
+    Vec qs = quantile(probs, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, ctls, verbose);
     myFloat mode = std_stable_dist.mode(dbltol).first;
     myFloat q_delta = .5*(qs(4)-qs(0));
     myFloat p_minus = std_stable_dist.cdf(mode-q_delta,true,false);
@@ -436,24 +443,25 @@ public:
   }
   myFloat alpha_to_par(const myFloat alpha) {
     myFloat a = min(alpha_max,max(alpha_min,alpha));
-    return tan((alpha_max-a)/(alpha_max-alpha_min)*(-StandardStableDistribution::pi2)+(a-alpha_min)/(alpha_max-alpha_min)*StandardStableDistribution::pi2);
+    return tan((alpha_max-a)/(alpha_max-alpha_min)*(-StandardStableDistribution<myFloat>::pi2)+(a-alpha_min)/(alpha_max-alpha_min)*StandardStableDistribution<myFloat>::pi2);
     
   }
   myFloat par_to_alpha(const myFloat par) {
-    return alpha_min + (alpha_max-alpha_min)*(.5+atan(par)/StandardStableDistribution::pi);
+    return alpha_min + (alpha_max-alpha_min)*(.5+atan(par)/StandardStableDistribution<myFloat>::pi);
   }
   myFloat norm(const Vec& par1, const Vec& par2) {
     Vec del(2);
     del(0) = par_to_alpha(par1(0)) - par_to_alpha(par2(0));
-    del(1) = (atan(par1(1))-atan(par2(1)))/StandardStableDistribution::pi2;
+    del(1) = (atan(par1(1))-atan(par2(1)))/StandardStableDistribution<myFloat>::pi2;
     return del.array().abs().maxCoeff();
   }
   
   DunnFit(const myFloat q_kurt, const myFloat q_mode, const myFloat skew, const myFloat alpha_min, const myFloat alpha_max,
-          ostream *trace, const myFloat dbltol, IntegrationController &ctl, const int verbose )
-  : q_kurt(q_kurt), q_mode(q_mode), skew(skew), alpha_min(alpha_min), alpha_max(alpha_max), trace(trace), dbltol(dbltol), ctl(ctl), verbose(verbose) {};
+          ostream *trace, const myFloat dbltol, Controllers<myFloat> ctls, const int verbose )
+  : q_kurt(q_kurt), q_mode(q_mode), skew(skew), alpha_min(alpha_min), alpha_max(alpha_max), trace(trace), dbltol(dbltol), ctls(ctls), verbose(verbose) {};
 };
 
+template<typename myFloat>
 class MLEFit : public Problem<myFloat> {
 public:
   Vec y;
@@ -461,11 +469,11 @@ public:
   myFloat alpha_max;
   bool quick;
   ostream *trace;
-  IntegrationController &ctl;
+  Controllers<myFloat> ctls;
   int verbose;
   myFloat value(const Vec &par) {
     myFloat alpha = par_to_alpha(par(0));
-    myFloat beta = atan(par(1))/StandardStableDistribution::pi2;
+    myFloat beta = atan(par(1))/StandardStableDistribution<myFloat>::pi2;
     myFloat gamma = exp(par(2));
     myFloat delta = par(3);
     *trace << setw(18) << setprecision(8) << alpha
@@ -475,12 +483,12 @@ public:
     (*trace).flush();
     myFloat out = 0;
     Vec yy = (y.array()-delta)/gamma;
-    StandardStableDistribution std_stable_dist(alpha, beta, ctl, verbose);
+    StandardStableDistribution<myFloat> std_stable_dist(alpha, beta, ctls, verbose);
     myFloat p_high = std_stable_dist.cdf(1e300, false, true);
     myFloat p_low = std_stable_dist.cdf(-1e300, true, true);
     myFloat log_gamma = log(gamma);
     if (quick) {
-      DstableQuick std_stable_dist_quick(&std_stable_dist);
+      DstableQuick<myFloat> std_stable_dist_quick(&std_stable_dist);
       int j = 0;
       for (int i=0; i<yy.size(); i++) {
         if (yy(i) > static_cast<myFloat>(1e300))
@@ -510,34 +518,35 @@ public:
   }
   myFloat alpha_to_par(const myFloat alpha) {
     myFloat a = min(alpha_max,max(alpha_min,alpha));
-    return tan((alpha_max-a)/(alpha_max-alpha_min)*(-StandardStableDistribution::pi2)+(a-alpha_min)/(alpha_max-alpha_min)*StandardStableDistribution::pi2);
+    return tan((alpha_max-a)/(alpha_max-alpha_min)*(-StandardStableDistribution<myFloat>::pi2)+(a-alpha_min)/(alpha_max-alpha_min)*StandardStableDistribution<myFloat>::pi2);
     
   }
   myFloat par_to_alpha(const myFloat par) {
-    return alpha_min + (alpha_max-alpha_min)*(.5+atan(par)/StandardStableDistribution::pi);
+    return alpha_min + (alpha_max-alpha_min)*(.5+atan(par)/StandardStableDistribution<myFloat>::pi);
   }
   myFloat norm(const Vec& par1, const Vec& par2) {
     Vec del(4);
     del(0) = par_to_alpha(par1(0)) - par_to_alpha(par2(0));
-    del(1) = (atan(par1(1))-atan(par2(1)))/StandardStableDistribution::pi2;
+    del(1) = (atan(par1(1))-atan(par2(1)))/StandardStableDistribution<myFloat>::pi2;
     del(2) = exp(par1(2))-exp(par2(2));
     del(3) = par1(3)-par2(3);
     return del.array().abs().maxCoeff();
   }
   
   MLEFit(const Vec &y, const myFloat alpha_min, const myFloat alpha_max, bool quick, ostream *trace,
-         IntegrationController &ctl, const int verbose )
-  : y(y), alpha_min(alpha_min), alpha_max(alpha_max), quick(quick), trace(trace), ctl(ctl), verbose(verbose) {};
+         Controllers<myFloat> ctls, const int verbose )
+  : y(y), alpha_min(alpha_min), alpha_max(alpha_max), quick(quick), trace(trace), ctls(ctls), verbose(verbose) {};
 };
 
 
+template<typename myFloat>
 class QMLEFit : public Problem<myFloat> {
 public:
   Vec y;
-  StandardStableDistribution std_stable_dist;
+  StandardStableDistribution<myFloat> std_stable_dist;
   bool quick;
   ostream *trace;
-  DstableQuick std_stable_dist_quick;
+  DstableQuick<myFloat> std_stable_dist_quick;
   
   myFloat value(const Vec &par) {
     myFloat gamma = exp(par(0));
@@ -586,23 +595,25 @@ public:
     return del.array().abs().maxCoeff();
   }
   
-  QMLEFit(const Vec &y, const myFloat &alpha, const myFloat &beta, bool quick, ostream *trace, IntegrationController &ctl,
+  QMLEFit(const Vec &y, const myFloat &alpha, const myFloat &beta, bool quick, ostream *trace, Controllers<myFloat> ctls,
           const int verbose )
-  : y(y), std_stable_dist(alpha, beta, ctl, verbose), quick(quick), trace(trace), std_stable_dist_quick(&std_stable_dist) {};
+  : y(y), std_stable_dist(alpha, beta, ctls, verbose), quick(quick), trace(trace), std_stable_dist_quick(&std_stable_dist) {};
   
 };
 
+template<typename myFloat>
 inline myFloat to_prob(myFloat p){
   return max(static_cast<myFloat>(0.),min(static_cast<myFloat>(1.),p));
 }
 
-Vec quantile(Vec &x, const Vec probs)
+template<typename myFloat>
+Vec quantile(Vec &x, const Vec& probs)
 {
   myFloat eps = 100 * std::numeric_limits<myFloat>::epsilon();
   long np = probs.size();
   if ((probs.array() < -eps || probs.array() > 1 + eps).any())
     throw std::range_error("quantile: 'probs' outside [0,1]");
-  probs.array().unaryExpr(std::ptr_fun(to_prob));
+  probs.array().unaryExpr(std::ptr_fun(to_prob<myFloat>));
   Vec qs(np);
   long n = x.size();
   if (n > 0 && np > 0) {
@@ -620,6 +631,7 @@ Vec quantile(Vec &x, const Vec probs)
   }
 }
 
+template<typename myFloat>
 myFloat p_sample(Vec x_sample, myFloat x ) {
   long n = x_sample.size();
   long n_lower = 0;
@@ -631,8 +643,9 @@ myFloat p_sample(Vec x_sample, myFloat x ) {
   return static_cast<myFloat>(n_lower)/n;
 }
 
+template<typename myFloat>
 myFloat mode_sample(Vec x_sample) {
-  int n = x_sample.size();
+  int n = static_cast<int>(x_sample.size());
   std::sort(x_sample.data(),x_sample.data()+n);
   int m = n/100;
   int i_mode = -1;
@@ -646,7 +659,8 @@ myFloat mode_sample(Vec x_sample) {
   return x_sample(i_mode+m/2);
 }
 
-ostream& operator<< (ostream &os, const FitResult &fr) {
+template<typename myFloat>
+ostream& operator<< (ostream &os, const FitResult<myFloat> &fr) {
   os << setw(10) << fr.method
   << setw(14) << setprecision(5) << scientific << fr.alpha
   << setw(14) << setprecision(5) << fr.beta
@@ -681,7 +695,8 @@ void result_heading(ostream &os) {
   << setw(6) << right << "time" << endl;
 }
 
-std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, const myFloat dbltol,
+template<typename myFloat>
+std::vector<FitResult<myFloat> > stable_fit(const Vec& yy, Controllers<myFloat> ctls, const myFloat dbltol,
                                   const string type,const bool quick, const int verbose) {
   int n=static_cast<int>(yy.size());
   ofstream trace("../output/stable_fit_trace.txt");
@@ -698,19 +713,19 @@ std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, con
   int iterations;
   myFloat q_kurt=(q(4)-q(0))/(q(3)-q(1));
   myFloat q_skew=(q(4)+q(0)-2*q(2))/(q(4)-q(0));
-  myFloat q_mode, skew;
+  myFloat q_mode{std::numeric_limits<myFloat>::quiet_NaN()}, skew;
   NelderMeadSolver<myFloat> solver;
-  NelderMeadSolver<myFloat>::Info &myctrl = solver.ctrl();
+  typename NelderMeadSolver<myFloat>::Info &myctrl = solver.ctrl();
   myctrl.iterations = 1000;
   myctrl.obj_spread = 1e-10;
   myctrl.x_spread = 1e10;   // Effectively not used.
-  const NelderMeadSolver<myFloat>::Info &myinfo = solver.info();
+  const typename NelderMeadSolver<myFloat>::Info &myinfo = solver.info();
   if (q_kurt < 1000) {
     high_resolution_clock::time_point t0 = high_resolution_clock::now();
     Vec par_McCulloch(2); par_McCulloch << 1., q_skew;
-    McCullochFit mcculloch_fit(q_kurt, q_skew, .1, 2., &trace, dbltol, ctl, verbose);
+    McCullochFit<myFloat> mcculloch_fit(q_kurt, q_skew, .1, 2., &trace, dbltol, ctls, verbose);
     solver.minimize(mcculloch_fit, par_McCulloch);
-    iterations = myinfo.iterations;
+    iterations = static_cast<int>(myinfo.iterations);
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     phase1_times = t1 - t0;
     if (myinfo.obj_spread <= myctrl.obj_spread && myinfo.x_spread <= myctrl.x_spread)
@@ -718,7 +733,7 @@ std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, con
     else
       convergence = "False";
     alpha = mcculloch_fit.par_to_alpha(par_McCulloch(0));
-    beta = atan(par_McCulloch(1))/StandardStableDistribution::pi2;
+    beta = atan(par_McCulloch(1))/StandardStableDistribution<myFloat>::pi2;
   } else {
     q_mode = mode_sample(y);
     myFloat p_upper = 1-p_sample(y,q_mode+.5*(q(4)-q(0)));
@@ -726,9 +741,9 @@ std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, con
     skew = (p_upper-p_lower)/(p_upper + p_lower);
     high_resolution_clock::time_point t0 = high_resolution_clock::now();
     Vec par_Dunn(2); par_Dunn << 1., skew;
-    DunnFit dunn_fit(q_kurt, q_mode, skew, .1, 2., &trace, dbltol, ctl, verbose);
+    DunnFit<myFloat> dunn_fit(q_kurt, q_mode, skew, .1, 2., &trace, dbltol, ctls, verbose);
     solver.minimize(dunn_fit, par_Dunn);
-    iterations = myinfo.iterations;
+    iterations = static_cast<int>(myinfo.iterations);
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     phase1_times = t1 - t0;
     if (myinfo.obj_spread <= myctrl.obj_spread && myinfo.x_spread <= myctrl.x_spread)
@@ -736,33 +751,36 @@ std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, con
     else
       convergence = "False";
     alpha = dunn_fit.par_to_alpha(par_Dunn(0));
-    beta = atan(par_Dunn(1))/StandardStableDistribution::pi2;
+    beta = atan(par_Dunn(1))/StandardStableDistribution<myFloat>::pi2;
   }
   Vec ps(5);
   ps << .05, .25, .5, .75, .95;
-  Vec qs = std_quantile(ps, alpha, beta, true, false, dbltol, ctl, verbose);
+  Vec gamma0; gamma0.setOnes(ps.size());
+  Vec delta0; delta0.setZero(ps.size());
+  Parameterization pm = S0;
+  Vec qs = quantile(ps, alpha, beta, gamma0, delta0, pm, true, false, dbltol, ctls, verbose);
   myFloat gamma = (q(3)-q(1))/(qs(3)-qs(1));
   myFloat delta;
   if (q_kurt < 1000) {
     delta = q(2) - gamma * qs(2);
   } else {
-    StandardStableDistribution McCulloch_dist(alpha, beta, ctl, verbose);
+    StandardStableDistribution<myFloat> McCulloch_dist(alpha, beta, ctls, verbose);
     delta = q_mode - gamma * McCulloch_dist.mode(dbltol).first;
   }
   myFloat alpha_min = .1, alpha_max = 2.;
-  MLEFit mle_fit(y, alpha_min, alpha_max, quick, &trace, ctl, verbose);
+  MLEFit<myFloat> mle_fit(y, alpha_min, alpha_max, quick, &trace, ctls, verbose);
   Vec par_mle(4);
-  par_mle << mle_fit.alpha_to_par(alpha), tan(StandardStableDistribution::pi2*beta), log(gamma), delta;
+  par_mle << mle_fit.alpha_to_par(alpha), tan(StandardStableDistribution<myFloat>::pi2*beta), log(gamma), delta;
   
-  QMLEFit q_mle_fit(y, alpha, beta, quick, &trace, ctl, verbose);
+  QMLEFit<myFloat> q_mle_fit(y, alpha, beta, quick, &trace, ctls, verbose);
   Vec par_q_mle(2);
   par_q_mle << log(gamma), delta;
   
   qs= gamma * qs.array() + delta;
-  FitResult fr_phase1((q_kurt < 1000) ? "McCulloch" : "Dunn", alpha, beta, gamma, delta, -mle_fit.value(par_mle), n, qs, convergence, iterations,
+  FitResult<myFloat> fr_phase1((q_kurt < 1000) ? "McCulloch" : "Dunn", alpha, beta, gamma, delta, -mle_fit.value(par_mle), n, qs, convergence, iterations,
                       phase1_times.count());
   
-  std::vector<FitResult> results;
+  std::vector<FitResult<myFloat> > results;
   results.push_back(fr_phase1);
   
   iterations = 0;
@@ -777,13 +795,13 @@ std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, con
     else
       convergence = "False";
     alpha = mle_fit.par_to_alpha(par_mle(0));
-    beta = atan(par_mle(1))/StandardStableDistribution::pi2;
+    beta = atan(par_mle(1))/StandardStableDistribution<myFloat>::pi2;
     gamma = exp(par_mle(2));
     delta = par_mle(3);
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     mle_times = t1 - t0;
-    qs=gamma*std_quantile(ps, alpha, beta, true, false, dbltol, ctl, verbose).array() + delta;
-    FitResult fr_mle("mle", alpha, beta, gamma, delta,-mle_fit.value(par_mle),n,qs,convergence,iterations,
+    qs=gamma*quantile(ps, alpha, beta, gamma0, delta0, pm, true, false, dbltol, ctls, verbose).array() + delta;
+    FitResult<myFloat> fr_mle("mle", alpha, beta, gamma, delta,-mle_fit.value(par_mle),n,qs,convergence,iterations,
                      mle_times.count());
     results.push_back(fr_mle);
   }
@@ -804,8 +822,8 @@ std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, con
     par_mle(3) = delta = par_q_mle(1);
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     q_mle_times = t1-t0;
-    qs=gamma*std_quantile(ps, alpha, beta, true, false, dbltol, ctl, verbose).array()+delta;
-    FitResult fr_q_mle("q_mle", alpha, beta, gamma, delta, -mle_fit(par_mle), n, qs, convergence, iterations,
+    qs=gamma*quantile(ps, alpha, beta, gamma0, delta0, pm, true, false, dbltol, ctls, verbose).array()+delta;
+    FitResult<myFloat> fr_q_mle("q_mle", alpha, beta, gamma, delta, -mle_fit(par_mle), n, qs, convergence, iterations,
                        q_mle_times.count());
     results.push_back(fr_q_mle);
   }
@@ -814,4 +832,4 @@ std::vector<FitResult> stable_fit(const Vec& yy, IntegrationController &ctl, con
 
 } //namespace stable_distribution
 
-#endif // !defined(MPREAL)
+

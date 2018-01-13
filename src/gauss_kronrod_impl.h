@@ -1,25 +1,18 @@
-/// \file gauss_kronrod.cpp
+/// \file gauss_kronrod_impl.h
+/// Implementation of routines to calculate nodes and weights
+/// Included in file gauss_kronrod.h when LIBRARY is defined
 /// \author Joseph Dunn
-/// \copyright 2016 Joseph Dunn
+/// \copyright 2016, 2017 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
-#include "gauss_kronrod.h"
-
 #include <Eigen/Eigenvalues>
-#include <iostream>
 #include <iomanip>
 #include <vector>
 #include <algorithm>
 
 namespace gauss_kronrod {
 using Eigen::SelfAdjointEigenSolver;
-typedef Eigen::Matrix<myFloat,Eigen::Dynamic,Eigen::Dynamic> MatrixXF;
-typedef Eigen::Matrix<myFloat,Eigen::Dynamic,1> VectorXF;
 
-/*
-using std::cout;
-*/
-#define cout Rcpp::Rcout
 using std::endl;
 using std::setw;
 using std::setprecision;
@@ -43,8 +36,11 @@ bool sd_lt(const sort_data<T> &lhs,const sort_data<T>& rhs) {
 // toms726 generates the nodes x and weights w for a quadrature rule
 // given the recurrence factors a and b for the orthogonal polynomials
 //
+template<typename myFloat>
 void toms726(const int n_gauss, const vector<myFloat>& a, const vector<myFloat>& b,
              vector<myFloat>& x, vector<myFloat>& w, const int verbose){
+  using MatrixXF = Eigen::Matrix<myFloat,Eigen::Dynamic,Eigen::Dynamic>;
+  using VectorXF = Eigen::Matrix<myFloat,Eigen::Dynamic,1>;
   int sumbgt0=0;
   for (int j=0; j<n_gauss; j++) sumbgt0+=(b.at(j)>0);
   if(sumbgt0!=n_gauss) {
@@ -85,6 +81,7 @@ void toms726(const int n_gauss, const vector<myFloat>& a, const vector<myFloat>&
   }
 }
 
+template<typename myFloat>
 void r_jacobi01(const int n_gauss, const myFloat a, const myFloat b, vector<myFloat>& c,
                 vector<myFloat>& d){
   if((n_gauss<=0)||(a<=-1)||(b<=-1)){
@@ -100,6 +97,7 @@ void r_jacobi01(const int n_gauss, const myFloat a, const myFloat b, vector<myFl
   }
 }
 
+template<typename myFloat>
 void r_jacobi(const int n_gauss, const myFloat a, const myFloat b, vector<myFloat>& c,
               vector<myFloat>& d){
   if((n_gauss<=0)||(a<=-1)||(b<=-1)) {
@@ -125,6 +123,7 @@ void r_jacobi(const int n_gauss, const myFloat a, const myFloat b, vector<myFloa
   }
 }
 
+template<typename myFloat>
 void r_kronrod(const int n_gauss, const vector<myFloat>& a0, const vector<myFloat>& b0,
                vector<myFloat>& a, vector<myFloat>& b) {
   if (a0.size()<ceil(3.*n_gauss/2.)+1) {
@@ -167,7 +166,7 @@ void r_kronrod(const int n_gauss, const vector<myFloat>& a0, const vector<myFloa
       cumsum=cumsum+-(a.at(k+n_gauss+1)-a.at(l))*t.at(j+1)-b.at(k+n_gauss+1)*s.at(j+1)+b.at(l)*s.at(j+2);
       tmp.at(j+1)=cumsum;
     }
-    int j;
+    int j{0};
     for (int k=m+1-n_gauss; k<=((m-1)/2); k++){
       j=n_gauss-1-m+k;
       s.at(j+1)=tmp.at(j+1);
@@ -188,4 +187,52 @@ void r_kronrod(const int n_gauss, const vector<myFloat>& a0, const vector<myFloa
   a.at(2*n_gauss)=a.at(n_gauss-1)-b.at(2*n_gauss)*s.at(1)/t.at(1);
   return;
 }
+  
+template<typename myFloat>
+  Kronrod<myFloat>::Kronrod(const int n_gauss, const int verbose)
+    : n_gauss(n_gauss), verbose(verbose) {
+  x_gauss.resize(n_gauss);
+  w_gauss.resize(n_gauss);
+  x_kronrod.resize(2*n_gauss+1);
+  w_kronrod.resize(2*n_gauss+1);
+  int M = std::max(2*n_gauss,int(ceil(3.*n_gauss/2.)+1));
+  vector<myFloat> a0(M);
+  vector<myFloat> b0(M);
+  r_jacobi01(M,myFloat(0),myFloat(0), a0, b0);
+  toms726(n_gauss, a0, b0, x_gauss, w_gauss, verbose>4);
+  vector<myFloat> a(2*n_gauss+1);
+  vector<myFloat> b(2*n_gauss+1);
+  r_kronrod(n_gauss, a0, b0, a, b);
+  toms726(2*n_gauss+1, a, b, x_kronrod, w_kronrod, verbose > 4);
+  for (int i = 0; i<n_gauss; i++) {
+    x_gauss.at(i)=2*x_gauss.at(i)-1;
+    w_gauss.at(i)=2*w_gauss.at(i);
+  }
+  
+  for (int i = 0; i<2*n_gauss+1; i++) {
+    x_kronrod.at(i) = 2*x_kronrod.at(i)-1;
+    w_kronrod.at(i) = 2*w_kronrod.at(i);
+  }
+} // Kronrod constructor
+  
+/// Operator to print the kronrod nodes and wieghts
+template<typename myFloat>
+  ostream& operator<< (ostream& os, const Kronrod<myFloat>& k) {
+    int d = std::numeric_limits<myFloat>::digits10;
+    os << "Gauss nodes and weights" << endl << endl;
+    os << setw(d+10) << right << "Node" << setw(d+10) << right << "Weight" << endl;
+    for (int i=0; i<k.n_gauss; ++i) {
+      os << setw(d+10) << setprecision(d) << k.x_gauss.at(i)
+      << setw(d+10) << setprecision(d) << k.w_gauss.at(i) << endl;
+    }
+    os << endl << "Kronrod nodes and weights" << endl << endl;
+    os << setw(d+10) << right << "Node" << setw(d+10) << right << "Weight" << endl;
+    for (int i=0; i<2*k.n_gauss+1; ++i) {
+      os << setw(d+10) << setprecision(d) << k.x_kronrod.at(i)
+      << setw(d+10) << setprecision(d) << k.w_kronrod.at(i) << endl;
+    }
+    return os;
+  }
+
+  
 } // namespace gauss_kronrod

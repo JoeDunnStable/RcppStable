@@ -90,18 +90,19 @@ BEGIN_RCPP
 END_RCPP
 }
 // ddx_sdstable
-NumericVector ddx_sdstable(Eigen::VectorXd x, double alpha, double beta, double tol, int subdivisions, int verbose);
-RcppExport SEXP _stablecpp_ddx_sdstable(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+NumericVector ddx_sdstable(Eigen::VectorXd x, double alpha, double beta, int pm, double tol, int subdivisions, int verbose);
+RcppExport SEXP _stablecpp_ddx_sdstable(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP pmSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Eigen::VectorXd >::type x(xSEXP);
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< int >::type pm(pmSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< int >::type subdivisions(subdivisionsSEXP);
     Rcpp::traits::input_parameter< int >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(ddx_sdstable(x, alpha, beta, tol, subdivisions, verbose));
+    rcpp_result_gen = Rcpp::wrap(ddx_sdstable(x, alpha, beta, pm, tol, subdivisions, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -152,15 +153,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // g_map_dataframe
-DataFrame g_map_dataframe(double x, double alpha, double beta);
-RcppExport SEXP _stablecpp_g_map_dataframe(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
+DataFrame g_map_dataframe(int type, double x, double alpha, double beta);
+RcppExport SEXP _stablecpp_g_map_dataframe(SEXP typeSEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
     Rcpp::traits::input_parameter< double >::type x(xSEXP);
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    rcpp_result_gen = Rcpp::wrap(g_map_dataframe(x, alpha, beta));
+    rcpp_result_gen = Rcpp::wrap(g_map_dataframe(type, x, alpha, beta));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -170,11 +172,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_stablecpp_dstable_quick", (DL_FUNC) &_stablecpp_dstable_quick, 10},
     {"_stablecpp_pstable_cpp", (DL_FUNC) &_stablecpp_pstable_cpp, 11},
     {"_stablecpp_qstable_cpp", (DL_FUNC) &_stablecpp_qstable_cpp, 12},
-    {"_stablecpp_ddx_sdstable", (DL_FUNC) &_stablecpp_ddx_sdstable, 6},
+    {"_stablecpp_ddx_sdstable", (DL_FUNC) &_stablecpp_ddx_sdstable, 7},
     {"_stablecpp_rstable_cpp", (DL_FUNC) &_stablecpp_rstable_cpp, 7},
     {"_stablecpp_sdstableMode", (DL_FUNC) &_stablecpp_sdstableMode, 6},
     {"_stablecpp_stable_fit_cpp", (DL_FUNC) &_stablecpp_stable_fit_cpp, 3},
-    {"_stablecpp_g_map_dataframe", (DL_FUNC) &_stablecpp_g_map_dataframe, 3},
+    {"_stablecpp_g_map_dataframe", (DL_FUNC) &_stablecpp_g_map_dataframe, 4},
     {NULL, NULL, 0}
 };
 

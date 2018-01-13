@@ -1,9 +1,10 @@
-/// \file stable_distribution_ddx_pdf.cpp
+/// \file stable_distribution_ddx_pdf.h
+/// Implementation of derivative of pdf of standard stable distribution.
+/// Included in stable_distribution.h when LIBRARY is defined
 /// \author Joseph Dunn
-/// \copyright 2016 Joseph Dunn
+/// \copyright 2016, 2017 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
-#include "stable_distribution.h"
 #include <limits>
 #include <iostream>
 #include <iomanip>
@@ -22,14 +23,16 @@ using std::ios;
 using std::pair;
 using boost::math::tools::toms748_solve;
 
-myFloat x_1_m_alpha_x_exp_m_x(myFloat x, StandardStableDistribution* std_stable_dist) {
-  if (x > Machine::large_exp_arg)
+template<typename myFloat>
+myFloat x_1_m_alpha_x_exp_m_x(myFloat x, StandardStableDistribution<myFloat>* std_stable_dist) {
+  if (x > StandardStableDistribution<myFloat>::large_exp_arg)
     return 0;
   else
     return x * (1 - std_stable_dist->alpha*x) * exp(-x);
 }
 
-myFloat StandardStableDistribution::integrate_ddx_pdf() {
+template<typename myFloat>
+myFloat StandardStableDistribution<myFloat>::integrate_ddx_pdf() {
   // --- pdf(x, alpha, beta, ..)  for alpha < 2 ---
   // For  x = zeta, have special case formula [n_gaussolan(1997)];
   // need to use it also for x ~= zeta, i.e., x.m.zet := |x - zeta| < delta :
@@ -37,10 +40,11 @@ myFloat StandardStableDistribution::integrate_ddx_pdf() {
   if (verbose)
     cout << "integrate_ddx_pdf:" << endl
          << "Integrand is g * (1 - alpha * g) * exp(-g)" << endl;
-  IntegrationController ctl_ddx(*controller);
   // integral is zero near mode so need to use absolute tolerance near mode
-  ctl_ddx.epsabs=(fabs(x_m_zeta_input) < 1) ? ctl_ddx.epsrel/c_ddx : myFloat{0};
-  Integral_f_of_g int_g1(x_1_m_alpha_x_exp_m_x,this, &ctl_ddx);
+  myFloat old_epsabs = controllers.controller.epsabs;
+  controllers.controller.epsabs=(fabs(x_m_zeta_input) < 1) ? controllers.controller.epsrel/c_ddx : myFloat{0};
+  Integral_f_of_g<myFloat> int_g1(x_1_m_alpha_x_exp_m_x,this, &controllers);
+  controllers.controller.epsabs = old_epsabs;
   r=int_g1();
   abserr=fabs(c_ddx) * int_g1.abserr;
   c_g_theta2_error = fabs(c_ddx) * g_theta2_error;
@@ -57,50 +61,43 @@ myFloat StandardStableDistribution::integrate_ddx_pdf() {
 } //integrate_ddx_pdf
 
 
-myFloat StandardStableDistribution::ddx_pdf(myFloat x, Parameterization pm)
+template<typename myFloat>
+myFloat StandardStableDistribution<myFloat>::ddx_pdf(myFloat x, Parameterization pm)
 {
   cout.precision(20);
   cout.setf(ios::scientific, ios::floatfield);
-  neval=0;
+  // Default values which will be reset in the integrator is used
+  abserr = 0;
+  neval = 0;
+  termination_code = IntegrationController<myFloat>::TerminationCode::normal;
+  last = 0;
+  
   myFloat ret;
-  switch (pm) {
-    case S0:
-      x_input=x;
-      set_x_m_zeta(x-zeta);
-      break;
-    case S1:
-      x_input = x + zeta;
-      set_x_m_zeta(x);
-  }
+  set_x_m_zeta(x, pm);
   if (verbose)
     cout << "ddx_pdf: pm = " << pm << endl << *this;
-  if (!isfinite(x)) {
-    abserr = 0;
-    termination_code=IntegrationController::normal;
+  if (!boost::math::isfinite(x)) {
     if (verbose)
       cout << "  x is infinite, returning " << 0 << endl;
      return 0;
   }
   switch (dist_type) {
     case Cauchy :
-      abserr = 0;
       ret = (-2*x / (pi *(1 + x*x)))*(1/(1+x*x));
       if (verbose)
         cout << "  Cauchy distribution, returning " << ret << endl;
       return  ret;
     case normal :
-      abserr = 0;
       ret = -x*exp(-x*x/4)/(4*sqrt(pi));
       if (verbose)
         cout << "  Normal distribution, returning " << ret << endl;
       return  ret;
     case fin_support :
-      abserr = 0;
       if (verbose)
         cout << "  Outside of support, returning " << 0 << endl;
       return 0;
     case other :
-      myFloat dfdx_zeta;
+      myFloat dfdx_zeta{0};
       
       if (alpha != 1) { // 0 < alpha < 2	&  |beta| <= 1 from above
         // General Case
@@ -116,17 +113,7 @@ myFloat StandardStableDistribution::ddx_pdf(myFloat x, Parameterization pm)
           /(2*pi * pow(1 + pow(zeta,2),(1/(alpha))));
 
         // need to use it also for x ~= zeta
-        myFloat x_m_zet_tol = 0;
-        switch (pm) {
-          case S0:
-            x_m_zet_tol = zeta_tol * (zeta_tol + std::max(fabs(x), fabs(zeta)));
-            break;
-          case S1:
-            x_m_zet_tol = std::numeric_limits<myFloat>::min();
-            break;
-        }
-        
-        if (x_m_zet <= x_m_zet_tol) {
+        if (use_f_zeta) {
           if (verbose)
             cout << "  " << x_input << " ~= " << zeta
             << " Using dfdx_zeta()" << endl;
@@ -136,7 +123,7 @@ myFloat StandardStableDistribution::ddx_pdf(myFloat x, Parameterization pm)
       } // alpha != 1
       if (good_theta2) {
         ret = integrate_ddx_pdf();
-        if (abserr > .01 * fabs(ret) && fun_type>1) {
+        if (abserr > 1e-6 * fabs(ret) && fun_type>1) {
           ret = -(1+alpha)*dPareto(x_m_zeta_input+zeta, alpha, beta_input, false)/x;
           if (verbose)
             cout << "ddx_pdf:" << endl << "  Integral has large error and x is large. using ddx_dPareto = " << ret << endl;
@@ -146,7 +133,7 @@ myFloat StandardStableDistribution::ddx_pdf(myFloat x, Parameterization pm)
         }
       } else { // bad theta2
         abserr = NAN;
-        termination_code = IntegrationController::bad_integrand;
+        termination_code = IntegrationController<myFloat>::bad_integrand;
         last = 0;
         if (fun_type>1){
           ret = -(1+alpha)*dPareto(x_m_zeta_input+zeta, alpha, beta_input, false)/x;

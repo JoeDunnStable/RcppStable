@@ -96,7 +96,6 @@ pstable <- function(q, alpha, beta, gamma = 1, delta = 0, pm = 0,
 
   ## Description:
   ##	 Returns probability for stable DF
-
   x <- q
   ## Parameter Check:
   ## NB: (gamma, delta) can be *vector*s (vectorized along x)

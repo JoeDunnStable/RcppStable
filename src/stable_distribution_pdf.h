@@ -1,9 +1,10 @@
-/// \file stable_distribution_pdf.cpp
+/// \file stable_distribution_pdf.h
+/// Implementation of pdf of standard stable distribution
+/// Included in stable_distribution.h when LIBRARY is defined
 /// \author Joseph Dunn
-/// \copyright 2016 Joseph Dunn
+/// \copyright 2016, 2017 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
-#include "stable_distribution.h"
 #include <limits>
 #include <iostream>
 #include <iomanip>
@@ -27,17 +28,19 @@ using std::min;
 using boost::math::tools::toms748_solve;
 
 /// x*exp(-x)  numerically stable, with correct limit 0 for x --> Inf
-inline myFloat x_exp_m_x(myFloat x, StandardStableDistribution* ext) {
+template<typename myFloat>
+inline myFloat x_exp_m_x(myFloat x, StandardStableDistribution<myFloat>* ext) {
   myFloat r;
-  if(isnan(x))
+  if(boost::math::isnan(x))
     r = NAN;
-  else if(x > Machine::large_exp_arg) // e.g. x == Inf
+  else if(x > StandardStableDistribution<myFloat>::large_exp_arg) // e.g. x == Inf
     r = 0;
   else
     r = x*exp(-x);
   return r;
 }
 
+template<typename myFloat>
 myFloat dPareto(myFloat x, myFloat alpha, myFloat beta, bool log_flag) {
   if (x < 0) {
     x = -x;
@@ -51,13 +54,14 @@ myFloat dPareto(myFloat x, myFloat alpha, myFloat beta, bool log_flag) {
                   alpha));
 }
 
-myFloat StandardStableDistribution::integrate_pdf(bool log_flag) {
+template<typename myFloat>
+myFloat StandardStableDistribution<myFloat>::integrate_pdf(bool log_flag) {
   // --- pdf(x, alpha, beta, ..)  for alpha < 2 ---
   myFloat r;
   if (verbose) cout << "integrate_pdf:" << endl
                     << "Integrand is g * exp(-g)" << endl;
   
-  Integral_f_of_g int_g1(&x_exp_m_x, this);
+  Integral_f_of_g<myFloat> int_g1(&x_exp_m_x, this);
   r=int_g1();
   abserr=c2*int_g1.abserr;
   c_g_theta2_error = c2 * g_theta2_error;
@@ -75,46 +79,39 @@ myFloat StandardStableDistribution::integrate_pdf(bool log_flag) {
   return c2 * (r);
 } //integrate_pdf
 
-myFloat StandardStableDistribution::pdf(myFloat x, int log_flag, Parameterization pm)
+template<typename myFloat>
+myFloat StandardStableDistribution<myFloat>::pdf(myFloat x, int log_flag, Parameterization pm)
 {
   cout.precision(20);
   cout.setf(ios::scientific, ios::floatfield);
+  //Default values which will be reset if the integrator is used
+  abserr = 0;
   neval = 0;
-  switch (pm) {
-    case S0:
-      x_input=x;
-      set_x_m_zeta(x-zeta);
-      break;
-    case S1:
-      x_input = x + zeta;
-      set_x_m_zeta(x);
-  }
+  termination_code = IntegrationController<myFloat>::TerminationCode::normal;
+  last = 0;
+  
+  set_x_m_zeta(x, pm);
   myFloat ret;
   if (verbose)
     cout << "pdf: log_flag = " << log_flag << endl << *this;
-  if (!isfinite(x)) {
-    abserr = 0;
-    termination_code=IntegrationController::normal;
+  if (!boost::math::isfinite(x)) {
     return log_flag ? NegInf: 0;
   }
   switch (dist_type) {
     case Cauchy :
       ret =log_flag ? static_cast<myFloat>(-log(pi) - log(1 + x*x))
                     : static_cast<myFloat>(1 / (pi * (1 + x*x)));
-      abserr = 0;
       if (verbose)
         cout << "  Using Cauchy Distribution = " << ret << endl;
       return ret;
     case normal :
       ret = log_flag ? static_cast<myFloat>(-x*x/4 -log(static_cast<myFloat>(2)) -log(pi)/2)
                      : exp(-x*x/4)/(2*sqrt(pi));
-      abserr = 0;
       if (verbose)
         cout << "  Using Normal Distribution = " << ret << endl;
       return ret;
     case fin_support :
       ret = log_flag ? NegInf : 0;
-      abserr=0;
       if (verbose)
         cout << "  Outside of support.  Returning " << ret << endl;
       return ret;
@@ -133,17 +130,7 @@ myFloat StandardStableDistribution::pdf(myFloat x, int log_flag, Parameterizatio
                     : static_cast<myFloat>(tgamma(1 + 1/alpha) * cos(theta0)/(pi * pow(1 + pow(zeta,2),(1/(2 * alpha))))));
 
         // need to use it also for x ~= zeta
-        myFloat x_m_zet_tol = 0;
-        switch (pm) {
-          case S0:
-            x_m_zet_tol = zeta_tol * (zeta_tol + std::max(fabs(x), fabs(zeta)));
-            break;
-          case S1:
-            x_m_zet_tol = std::numeric_limits<myFloat>::min();
-            break;
-        }
-        
-        if (x_m_zet <= x_m_zet_tol) {
+        if (use_f_zeta) {
           ret = f_zeta;
           if (verbose)
             cout << "  " << x_input
@@ -157,7 +144,7 @@ myFloat StandardStableDistribution::pdf(myFloat x, int log_flag, Parameterizatio
         ret = integrate_pdf(log_flag);
         if (verbose) cout << "pdf:" << endl;
         myFloat error = max(c_g_theta2_error, abserr);
-        if (error < controller->epsrel * ret || (fun_type == 1) || (fun_type == 3 && x < 10)) {
+        if (error < controllers.controller.epsrel * ret || small_x_m_zet) {
           if (verbose)
             cout << "  Error is below threshhold or x is small. Using integral = " << ret << endl;
         } else {
@@ -173,9 +160,9 @@ myFloat StandardStableDistribution::pdf(myFloat x, int log_flag, Parameterizatio
         }
       } else { // bad theta2
         abserr = NAN;
-        termination_code = IntegrationController::bad_integrand;
+        termination_code = IntegrationController<myFloat>::bad_integrand;
         last = 0;
-        if (fun_type>1){
+        if (!small_x_m_zet){
           ret = dPareto(x_m_zeta_input+zeta, alpha, beta_input, log_flag);
           if (verbose){
             cout<< "  Theta2 is bad & x is large so using dPareto = " << ret << endl;

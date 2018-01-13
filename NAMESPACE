@@ -1,5 +1,5 @@
-importFrom(Rcpp, evalCpp)
 import(RcppEigen)
+importFrom(Rcpp, evalCpp)
 importFrom(stats4, mle)
 importFrom(stats,
 	   dnorm, pnorm, qnorm, rnorm,

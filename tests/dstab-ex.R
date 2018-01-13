@@ -373,4 +373,57 @@ stopifnot(0 < r.b1[1], r.b1[2] < 0.35)
 ## "FIXME" test more: monotonicity in x {mode is < 0 = min{x_i}}, beta, alpha, ...
 showProc.time()
 
+beta<-(-4:4)/4
+x <- (-80:80)/8
+
+graph_pm2<-function(alpha, betas, x) {
+  df_in<-expand.grid(alpha=alpha, beta=beta)
+
+  show_pm2 <- function(df_in) {
+    data.frame(x=x, pdf=dstable(x, df_in$alpha, df_in$beta, gamma=3, delta=-1,pm=2))
+  }
+
+  df_out <- ddply(df_in, .(alpha, beta), show_pm2)
+  df_out$beta <- as.factor(df_out$beta)
+  df_vline = data.frame(xintercept=-1)
+  tmp <- paste("dstable(x, ", expression(  alpha ), " = ", eval(alpha), ", beta, gamma = 3, delta = -1, pm = 2)")
+  gph <- qplot(x=x, y=pdf, data=df_out, color=beta, geom="line",
+               main=tmp)+
+    geom_vline(aes(xintercept=xintercept),data=df_vline)
+  print(gph)
+}
+
+graph_pm2(.1, beta, x)
+graph_pm2(.5, beta, x)
+graph_pm2(.9999, beta, x)
+graph_pm2(1, beta, x)
+graph_pm2(1.0001, beta, x)
+graph_pm2(1.5, beta, x)
+graph_pm2(1.9, beta, x)
+
+showProc.time()
+
+alpha<-c(.5, 1, 1.5)
+beta<-.5
+gamma<-3
+delta<--5
+pm<-c(0,1,2)
+
+df_r<-expand.grid(alpha=alpha, beta=beta, gamma=gamma, delta=-5, pm=pm)
+
+ks_test <- function(df) {
+  set.seed(200)
+  tmp<-ks.test(rstable(10000, alpha=df$alpha, beta=df$beta,
+                             gamma=df$gamma, delta=df$delta, pm=df$pm),
+               "pstable", alpha=df$alpha, beta=df$beta,
+                          gamma=df$gamma, delta=df$delta, pm=df$pm)
+  data.frame(D=tmp$statistic, p.value=tmp$p.value)
+}
+
+df_r_out <- ddply(df_r, .(alpha, beta, gamma, delta, pm), ks_test)
+df_r_out
+
+stopifnot(min(df_r_out$p.value)>.01)
+showProc.time()
+
 dev.off()

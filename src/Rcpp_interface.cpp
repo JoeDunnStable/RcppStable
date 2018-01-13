@@ -1,3 +1,10 @@
+#include <RcppEigen.h>
+
+#define cout Rcpp::Rcout
+#define cerr Rcpp::Rcerr
+
+#define LIBRARY
+
 #include "stable_distribution_Vec.h"
 #include "stable_distribution_fit.h"
 
@@ -10,6 +17,7 @@ using Rcpp::CharacterVector;
 using Rcpp::DataFrame;
 using Rcpp::Named;
 using Rcpp::wrap;
+
 
 // [[Rcpp::depends(RcppEigen)]]
 
@@ -24,8 +32,9 @@ NumericVector dstable_cpp(Eigen::VectorXd x, double alpha, double beta,
   int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
   double epsabs=0.;
   double epsrel=tol;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
-  return wrap(pdf(x, alpha, beta, gamma, delta, pm, log_flag, ctl, verbose));
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
+  return wrap(pdf(x, alpha, beta, gamma, delta, pm, log_flag, ctls, verbose));
   END_RCPP
 }
 
@@ -40,8 +49,9 @@ NumericVector dstable_quick(Eigen::VectorXd x, double alpha, double beta,
   int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
   double epsabs=0.;
   double epsrel=tol;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
-  return wrap(pdf_quick(x, alpha, beta, gamma, delta, pm, log_flag, ctl, verbose));
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
+  return wrap(pdf_quick(x, alpha, beta, gamma, delta, pm, log_flag, ctls, verbose));
   END_RCPP
 }
 
@@ -55,8 +65,9 @@ NumericVector pstable_cpp(Eigen::VectorXd z, double alpha, double beta,
   int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
   double epsabs=0.;
   double epsrel=dbltol;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
-  return wrap(cdf(z, alpha, beta, gamma, delta, pm, lower_tail, log_p, ctl, verbose));
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
+  return wrap(cdf(z, alpha, beta, gamma, delta, pm, lower_tail, log_p, ctls, verbose));
   END_RCPP
 }
 
@@ -71,14 +82,15 @@ NumericVector qstable_cpp(Eigen::VectorXd p, double alpha, double beta,
   int N = 10;  // Use a 10 point Gausss and 21 point Gauss Kronrod rule
   double epsabs=0.;
   double epsrel=integ_tol;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
   return wrap(quantile(p, alpha, beta, gamma, delta, pm, lower_tail, log_p,
-                     dbltol, ctl, verbose));
+                     dbltol, ctls, verbose));
   END_RCPP
 }
 
 // [[Rcpp::export]]
-NumericVector ddx_sdstable(Eigen::VectorXd x, double alpha, double beta,
+NumericVector ddx_sdstable(Eigen::VectorXd x, double alpha, double beta, int pm,
                        double tol, int subdivisions, int verbose)
 {
   BEGIN_RCPP
@@ -86,8 +98,9 @@ NumericVector ddx_sdstable(Eigen::VectorXd x, double alpha, double beta,
   int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
   double epsabs=0.;
   double epsrel=tol;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
-  return wrap(std_ddx_pdf(x, alpha, beta, ctl, verbose));
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
+  return wrap(std_ddx_pdf(x, alpha, beta, (pm==0?S0:S1), ctls, verbose));
   END_RCPP
 }
 
@@ -107,9 +120,10 @@ NumericVector rstable_cpp(double alpha, double beta,
   double epsrel=64 * std::numeric_limits<double>::epsilon();
   int subdivisions = 1000;
   int verbose = 0;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
-  Vec ret(n);
-  ret=random_stable(alpha, beta, gamma, delta, pm, ctl, verbose, u1, u2);
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
+  Eigen::VectorXd ret(n);
+  ret=random_stable(alpha, beta, gamma, delta, pm, ctls, verbose, u1, u2);
   return wrap(ret);
   END_RCPP
 }
@@ -123,8 +137,9 @@ double sdstableMode(double alpha, double beta,
   int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
   double epsabs=0.;
   double epsrel=tol;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, 0);
-  StandardStableDistribution std_stable_dist(alpha, beta, ctl, 0);
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, 0);
+  Controllers<double> ctls(ctl, ctl);
+  StandardStableDistribution<double> std_stable_dist(alpha, beta, ctls, 0);
   return std_stable_dist.mode(dbltol, verbose).first;
 }
 
@@ -137,10 +152,11 @@ DataFrame stable_fit_cpp(Eigen::VectorXd y, std::string type, bool quick) {
   double epsrel=64*std::numeric_limits<double>::epsilon();
   int subdivisions = 1000;
   int verbose = 0;
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
   double dbltol=1e-12;
 
-  std::vector<FitResult> results = stable_fit(y, ctl, dbltol, type, quick, verbose);
+  std::vector<FitResult<double> > results = stable_fit(y, ctls, dbltol, type, quick, verbose);
   int m = results.size();
   DoubleVector alpha(m);
   DoubleVector beta(m);
@@ -193,7 +209,7 @@ DataFrame stable_fit_cpp(Eigen::VectorXd y, std::string type, bool quick) {
 }
 
 // [[Rcpp::export]]
-DataFrame g_map_dataframe(double x, double alpha, double beta) {
+DataFrame g_map_dataframe(int type, double x, double alpha, double beta) {
   BEGIN_RCPP
   // We need an integration controller and verbose indicator
   // to form a StandardStableDistribution but we won't actually use them in this routine
@@ -203,9 +219,19 @@ DataFrame g_map_dataframe(double x, double alpha, double beta) {
   int N = 10;  // Us a 10 point Gausss and 21 point Gauss Kronrod rule
   double epsabs=0.;
   double epsrel=64*std::numeric_limits<double>::epsilon();
-  IntegrationController ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
-  StandardStableDistribution std_stable_dist(alpha, beta, ctl, verbose);
-  std_stable_dist.pdf(x,false);  // Just to force the mapping process
+  IntegrationController<double> ctl(noext, N, epsabs, epsrel, subdivisions, verbose);
+  Controllers<double> ctls(ctl, ctl);
+  StandardStableDistribution<double> std_stable_dist(alpha, beta, ctls, verbose);
+  switch (type) {
+  case 1:
+      std_stable_dist.cdf(x, true, false);  // Just to force the mapping process
+      break;
+  case 2:
+      std_stable_dist.pdf(x, false);
+      break;
+  case 3:
+      std_stable_dist.ddx_pdf(x);
+  }
   int n = std_stable_dist.points.size();
   int m = std_stable_dist.last;
   DoubleVector th(n+m+1);
@@ -218,9 +244,9 @@ DataFrame g_map_dataframe(double x, double alpha, double beta) {
   }
   double b_max=-std::numeric_limits<double>::infinity();
   for (int i=0; i<m; ++i) {
-    th(i+n) = std_stable_dist.controller->subs.at(i).a;
-    g_th(i+n) = std_stable_dist.g(std_stable_dist.controller->subs.at(i).a);
-    b_max = std::max(b_max,std_stable_dist.controller->subs.at(i).b);
+    th(i+n) = std_stable_dist.controllers.controller.subs.at(i).a;
+    g_th(i+n) = std_stable_dist.g(std_stable_dist.controllers.controller.subs.at(i).a);
+    b_max = std::max(b_max,std_stable_dist.controllers.controller.subs.at(i).b);
     type(i+n) = "subinterval";
   }
   th(n+m) = b_max;
