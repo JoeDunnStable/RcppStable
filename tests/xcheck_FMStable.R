@@ -1,10 +1,10 @@
 require(FMStable)
-require(stablecpp)
+require(RcppStable)
 require(reshape2)
 
 
 compare_dstable<-function(xs,alphas) {
-  write("Comparing stablecpp::dstable to FMStable::dEstable","")
+  write("Comparing RcppStable::dstable to FMStable::dEstable","")
   n<-length(xs)
   FM<-function(x,a,b,pm){
     if (b==-1) {
@@ -20,7 +20,7 @@ compare_dstable<-function(xs,alphas) {
   for (a in alphas) {
     write(a,"")
     for (b in c(-1,1)) {
-      v_cpp<-tryCatch(stablecpp::dstable(xs,a,b,pm=0),error=returnNA)
+      v_cpp<-tryCatch(RcppStable::dstable(xs,a,b,pm=0),error=returnNA)
       v_fm<-tryCatch(FM(xs,a,b,pm=0),error=returnNA)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       x=xs,v_cpp=v_cpp,v_fm=v_fm))
@@ -36,7 +36,7 @@ compare_dstable<-function(xs,alphas) {
 }
 
 compare_pstable<-function(xs,alphas) {
-  write("Comparing stablecpp::pstable to FMStable::pEstable\n","")
+  write("Comparing RcppStable::pstable to FMStable::pEstable\n","")
   n<-length(xs)
   FM<-function(x,a,b,pm){
     if (b==-1) {
@@ -55,7 +55,7 @@ compare_pstable<-function(xs,alphas) {
     for (a in alphas) {
     write(a,"")
     for (b in c(-1,1)) {
-      v_cpp<-tryCatch(stablecpp::pstable(xs,a,b,pm=0),error=returnNA)
+      v_cpp<-tryCatch(RcppStable::pstable(xs,a,b,pm=0),error=returnNA)
       v_fm<-tryCatch(FM(xs,a,b,pm=0),error=returnNA)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       x=xs,v_cpp=v_cpp,v_fm=v_fm))
@@ -72,7 +72,7 @@ compare_pstable<-function(xs,alphas) {
 }
 
 compare_qstable<-function(ps,alphas) {
-  write("Comparing stablecpp::qstable to FMStable::qEstable\n","")
+  write("Comparing RcppStable::qstable to FMStable::qEstable\n","")
   n<-length(ps)
   FM<-function(p,a,b,pm){
     if (b==-1)
@@ -90,7 +90,7 @@ compare_qstable<-function(ps,alphas) {
   for (a in alphas) {
     print(a)
     for (b in c(-1,1)) {
-      v_cpp<-tryCatch(stablecpp::qstable(ps,a,b,pm=0),error=returnNA)
+      v_cpp<-tryCatch(RcppStable::qstable(ps,a,b,pm=0),error=returnNA)
       v_fm<-tryCatch(FM(ps,a,b,pm=0),error=returnNA)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       p=ps,v_cpp=v_cpp,v_fm=v_fm))

@@ -1,4 +1,4 @@
-PKG=stablecpp
+PKG=RcppStable
 TOP=../..
 SUITE=doRUnit.R
 R=R

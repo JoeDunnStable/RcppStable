@@ -1,8 +1,8 @@
-require("stablecpp")
+require("RcppStable")
 require("ggplot2")
 
 ###--- Tail approximations etc  -- both for pstable() and dstable()
-dPareto <- stablecpp:::dPareto
+dPareto <- RcppStable:::dPareto
 
 source(system.file("test-tools-1.R", package = "Matrix"), keep.source=interactive())
 					#-> identical3(), showProc.time(),...
@@ -29,7 +29,7 @@ pstab.tailratio <- function(alpha, beta, n = nc, prob = 2^-40,
     ok <- iF > 0
     iF <- iF[ok]
     x <- x[ok]
-    iFp <- stablecpp:::pPareto(x, alpha,beta, lower.tail=FALSE)
+    iFp <- RcppStable:::pPareto(x, alpha,beta, lower.tail=FALSE)
     eps <- (iF - iFp)/iFp
     structure(list(x=x, eps=eps, call = cl, alpha=alpha, beta=beta),
               class = "pstableTailratio")
@@ -113,7 +113,7 @@ dstab.tailratio <- function(alpha, beta, n = nc, prob = 2^-40,
     ok <- f > 0
     f <- f[ok]
     x <- x[ok]
-    fp <- stablecpp:::dPareto(x, alpha,beta)
+    fp <- RcppStable:::dPareto(x, alpha,beta)
     eps <- (f - fp)/fp
     structure(list(x=x, eps=eps, call = cl, alpha=alpha, beta=beta),
               class = "dstableTailratio")

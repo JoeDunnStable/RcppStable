@@ -1,8 +1,8 @@
-require("stablecpp")
+require("RcppStable")
 require("ggplot2")
 require("plyr")
 
-pPareto <- stablecpp:::pPareto
+pPareto <- RcppStable:::pPareto
 
 pdf("pstab-small_alpha.pdf")
 

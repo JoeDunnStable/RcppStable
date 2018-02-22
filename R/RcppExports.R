@@ -2,38 +2,38 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 dstable_cpp <- function(x, alpha, beta, gamma, delta, pm, log_flag, tol, subdivisions, verbose) {
-    .Call('_stablecpp_dstable_cpp', PACKAGE = 'stablecpp', x, alpha, beta, gamma, delta, pm, log_flag, tol, subdivisions, verbose)
+    .Call('_RcppStable_dstable_cpp', PACKAGE = 'RcppStable', x, alpha, beta, gamma, delta, pm, log_flag, tol, subdivisions, verbose)
 }
 
 dstable_quick <- function(x, alpha, beta, gamma, delta, pm, log_flag, tol, subdivisions, verbose) {
-    .Call('_stablecpp_dstable_quick', PACKAGE = 'stablecpp', x, alpha, beta, gamma, delta, pm, log_flag, tol, subdivisions, verbose)
+    .Call('_RcppStable_dstable_quick', PACKAGE = 'RcppStable', x, alpha, beta, gamma, delta, pm, log_flag, tol, subdivisions, verbose)
 }
 
 pstable_cpp <- function(z, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, subdivisions, verbose) {
-    .Call('_stablecpp_pstable_cpp', PACKAGE = 'stablecpp', z, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, subdivisions, verbose)
+    .Call('_RcppStable_pstable_cpp', PACKAGE = 'RcppStable', z, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, subdivisions, verbose)
 }
 
 qstable_cpp <- function(p, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, integ_tol, subdivisions, verbose) {
-    .Call('_stablecpp_qstable_cpp', PACKAGE = 'stablecpp', p, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, integ_tol, subdivisions, verbose)
+    .Call('_RcppStable_qstable_cpp', PACKAGE = 'RcppStable', p, alpha, beta, gamma, delta, pm, lower_tail, log_p, dbltol, integ_tol, subdivisions, verbose)
 }
 
 ddx_sdstable <- function(x, alpha, beta, pm, tol, subdivisions, verbose) {
-    .Call('_stablecpp_ddx_sdstable', PACKAGE = 'stablecpp', x, alpha, beta, pm, tol, subdivisions, verbose)
+    .Call('_RcppStable_ddx_sdstable', PACKAGE = 'RcppStable', x, alpha, beta, pm, tol, subdivisions, verbose)
 }
 
 rstable_cpp <- function(alpha, beta, gamma, delta, pm, u1, u2) {
-    .Call('_stablecpp_rstable_cpp', PACKAGE = 'stablecpp', alpha, beta, gamma, delta, pm, u1, u2)
+    .Call('_RcppStable_rstable_cpp', PACKAGE = 'RcppStable', alpha, beta, gamma, delta, pm, u1, u2)
 }
 
 sdstableMode <- function(alpha, beta, dbltol, tol, subdivisions, verbose) {
-    .Call('_stablecpp_sdstableMode', PACKAGE = 'stablecpp', alpha, beta, dbltol, tol, subdivisions, verbose)
+    .Call('_RcppStable_sdstableMode', PACKAGE = 'RcppStable', alpha, beta, dbltol, tol, subdivisions, verbose)
 }
 
 stable_fit_cpp <- function(y, type, quick) {
-    .Call('_stablecpp_stable_fit_cpp', PACKAGE = 'stablecpp', y, type, quick)
+    .Call('_RcppStable_stable_fit_cpp', PACKAGE = 'RcppStable', y, type, quick)
 }
 
 g_map_dataframe <- function(type, x, alpha, beta) {
-    .Call('_stablecpp_g_map_dataframe', PACKAGE = 'stablecpp', type, x, alpha, beta)
+    .Call('_RcppStable_g_map_dataframe', PACKAGE = 'RcppStable', type, x, alpha, beta)
 }
 

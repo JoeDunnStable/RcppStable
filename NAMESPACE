@@ -8,7 +8,7 @@ importFrom(stats,
 	   runif,
 	   integrate, uniroot, optimize)
 
-useDynLib(stablecpp)
+useDynLib(RcppStable)
 export(
        "dstable", "dstable.quick",
        "pstable",

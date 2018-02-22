@@ -1,8 +1,8 @@
-require("stablecpp")
+require("RcppStable")
 require("ggplot2")
 require("grid")
 
-pPareto <- stablecpp:::pPareto
+pPareto <- RcppStable:::pPareto
 
 source(system.file("test-tools-1.R", package = "Matrix"), keep.source=interactive())
 					#-> identical3(), showProc.time(),...
@@ -202,7 +202,7 @@ stopifnot(
 )
 
 ## Stable(alpha = 1/2, beta = 1, gamma, delta, pm = 1)	<===>  Levy(delta, gamma)
-source(system.file("xtraR", "Levy.R", package = "stablecpp"), keep.source=interactive())
+source(system.file("xtraR", "Levy.R", package = "RcppStable"), keep.source=interactive())
 ##-> dLevy(x, mu, c, log)                and
 ##-> pLevy(x, mu, c, log.p, lower.tail)
 

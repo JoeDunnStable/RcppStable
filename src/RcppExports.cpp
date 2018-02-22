@@ -8,7 +8,7 @@ using namespace Rcpp;
 
 // dstable_cpp
 NumericVector dstable_cpp(Eigen::VectorXd x, double alpha, double beta, Eigen::VectorXd gamma, Eigen::VectorXd delta, int pm, int log_flag, double tol, int subdivisions, int verbose);
-RcppExport SEXP _stablecpp_dstable_cpp(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP log_flagSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+RcppExport SEXP _RcppStable_dstable_cpp(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP log_flagSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -28,7 +28,7 @@ END_RCPP
 }
 // dstable_quick
 NumericVector dstable_quick(Eigen::VectorXd x, double alpha, double beta, Eigen::VectorXd gamma, Eigen::VectorXd delta, int pm, int log_flag, double tol, int subdivisions, int verbose);
-RcppExport SEXP _stablecpp_dstable_quick(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP log_flagSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+RcppExport SEXP _RcppStable_dstable_quick(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP log_flagSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -48,7 +48,7 @@ END_RCPP
 }
 // pstable_cpp
 NumericVector pstable_cpp(Eigen::VectorXd z, double alpha, double beta, Eigen::VectorXd gamma, Eigen::VectorXd delta, int pm, int lower_tail, int log_p, double dbltol, int subdivisions, int verbose);
-RcppExport SEXP _stablecpp_pstable_cpp(SEXP zSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP lower_tailSEXP, SEXP log_pSEXP, SEXP dbltolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+RcppExport SEXP _RcppStable_pstable_cpp(SEXP zSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP lower_tailSEXP, SEXP log_pSEXP, SEXP dbltolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -69,7 +69,7 @@ END_RCPP
 }
 // qstable_cpp
 NumericVector qstable_cpp(Eigen::VectorXd p, double alpha, double beta, Eigen::VectorXd gamma, Eigen::VectorXd delta, int pm, int lower_tail, int log_p, double dbltol, double integ_tol, int subdivisions, int verbose);
-RcppExport SEXP _stablecpp_qstable_cpp(SEXP pSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP lower_tailSEXP, SEXP log_pSEXP, SEXP dbltolSEXP, SEXP integ_tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+RcppExport SEXP _RcppStable_qstable_cpp(SEXP pSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP lower_tailSEXP, SEXP log_pSEXP, SEXP dbltolSEXP, SEXP integ_tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -91,7 +91,7 @@ END_RCPP
 }
 // ddx_sdstable
 NumericVector ddx_sdstable(Eigen::VectorXd x, double alpha, double beta, int pm, double tol, int subdivisions, int verbose);
-RcppExport SEXP _stablecpp_ddx_sdstable(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP pmSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+RcppExport SEXP _RcppStable_ddx_sdstable(SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP pmSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -108,7 +108,7 @@ END_RCPP
 }
 // rstable_cpp
 NumericVector rstable_cpp(double alpha, double beta, Eigen::VectorXd gamma, Eigen::VectorXd delta, int pm, Eigen::VectorXd u1, Eigen::VectorXd u2);
-RcppExport SEXP _stablecpp_rstable_cpp(SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP u1SEXP, SEXP u2SEXP) {
+RcppExport SEXP _RcppStable_rstable_cpp(SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP deltaSEXP, SEXP pmSEXP, SEXP u1SEXP, SEXP u2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -125,7 +125,7 @@ END_RCPP
 }
 // sdstableMode
 double sdstableMode(double alpha, double beta, double dbltol, double tol, int subdivisions, int verbose);
-RcppExport SEXP _stablecpp_sdstableMode(SEXP alphaSEXP, SEXP betaSEXP, SEXP dbltolSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
+RcppExport SEXP _RcppStable_sdstableMode(SEXP alphaSEXP, SEXP betaSEXP, SEXP dbltolSEXP, SEXP tolSEXP, SEXP subdivisionsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -141,7 +141,7 @@ END_RCPP
 }
 // stable_fit_cpp
 DataFrame stable_fit_cpp(Eigen::VectorXd y, std::string type, bool quick);
-RcppExport SEXP _stablecpp_stable_fit_cpp(SEXP ySEXP, SEXP typeSEXP, SEXP quickSEXP) {
+RcppExport SEXP _RcppStable_stable_fit_cpp(SEXP ySEXP, SEXP typeSEXP, SEXP quickSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -154,7 +154,7 @@ END_RCPP
 }
 // g_map_dataframe
 DataFrame g_map_dataframe(int type, double x, double alpha, double beta);
-RcppExport SEXP _stablecpp_g_map_dataframe(SEXP typeSEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
+RcppExport SEXP _RcppStable_g_map_dataframe(SEXP typeSEXP, SEXP xSEXP, SEXP alphaSEXP, SEXP betaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -168,19 +168,19 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_stablecpp_dstable_cpp", (DL_FUNC) &_stablecpp_dstable_cpp, 10},
-    {"_stablecpp_dstable_quick", (DL_FUNC) &_stablecpp_dstable_quick, 10},
-    {"_stablecpp_pstable_cpp", (DL_FUNC) &_stablecpp_pstable_cpp, 11},
-    {"_stablecpp_qstable_cpp", (DL_FUNC) &_stablecpp_qstable_cpp, 12},
-    {"_stablecpp_ddx_sdstable", (DL_FUNC) &_stablecpp_ddx_sdstable, 7},
-    {"_stablecpp_rstable_cpp", (DL_FUNC) &_stablecpp_rstable_cpp, 7},
-    {"_stablecpp_sdstableMode", (DL_FUNC) &_stablecpp_sdstableMode, 6},
-    {"_stablecpp_stable_fit_cpp", (DL_FUNC) &_stablecpp_stable_fit_cpp, 3},
-    {"_stablecpp_g_map_dataframe", (DL_FUNC) &_stablecpp_g_map_dataframe, 4},
+    {"_RcppStable_dstable_cpp", (DL_FUNC) &_RcppStable_dstable_cpp, 10},
+    {"_RcppStable_dstable_quick", (DL_FUNC) &_RcppStable_dstable_quick, 10},
+    {"_RcppStable_pstable_cpp", (DL_FUNC) &_RcppStable_pstable_cpp, 11},
+    {"_RcppStable_qstable_cpp", (DL_FUNC) &_RcppStable_qstable_cpp, 12},
+    {"_RcppStable_ddx_sdstable", (DL_FUNC) &_RcppStable_ddx_sdstable, 7},
+    {"_RcppStable_rstable_cpp", (DL_FUNC) &_RcppStable_rstable_cpp, 7},
+    {"_RcppStable_sdstableMode", (DL_FUNC) &_RcppStable_sdstableMode, 6},
+    {"_RcppStable_stable_fit_cpp", (DL_FUNC) &_RcppStable_stable_fit_cpp, 3},
+    {"_RcppStable_g_map_dataframe", (DL_FUNC) &_RcppStable_g_map_dataframe, 4},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_stablecpp(DllInfo *dll) {
+RcppExport void R_init_RcppStable(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

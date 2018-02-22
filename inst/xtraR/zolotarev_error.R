@@ -26,7 +26,7 @@ z_error_comp <- function(alpha, beta, x) {
   betaB <- alpha * theta0/(pi/2*k_alpha)
   gammaB <- cos(alpha*theta0)^(-1/alpha)
   xB <- x/gammaB
-  d_stable <- stablecpp::dstable(x, alpha, beta, pm=1)
+  d_stable <- RcppStable::dstable(x, alpha, beta, pm=1)
   cat(c("theta0 = ",format(theta0), "\n"))
   cat(c("k_alpha = ", format(k_alpha), "\n"))
   cat(c("betaB = ", format(betaB), "\n"))
@@ -41,18 +41,13 @@ z_error_comp <- function(alpha, beta, x) {
     cat(c("xB* = ", format(xB^-alpha),"\n"))
     cat(c("cos_ab = ", format(cos(pi/2*alpha_star*betaB_star)^(1/alpha)),"\n"))
   }
-  z_estimate <- rep(0,0)
-  error <- rep(0,0)
-  error2 <- rep(0,0)
-  error_bound <- rep(0,0)
-  for (n in 1:50) {
-    z_estimate <- c(z_estimate, z_2_5_1(n, alpha, betaB, xB)/gammaB)
-    error <- c(error,z_error(n, alpha, betaB, xB)/gammaB)
-    error2 <- c(error2, z_estimate[n]-d_stable)
-    error_bound <- c(error_bound,z_error_bound(n, alpha, betaB, xB)/gammaB)
-  }
-  data.frame(n=1:length(error), z_estimate=z_estimate, error=error,
-             error2=error2, error_bound=error_bound, ratio=error/error_bound)
+  n<-50
+  z_asymptotic <- z_2_5_1(n, alpha, betaB, xB)/gammaB
+  z_convergent <- z_2_4_6(n, alpha, betaB, xB)/gammaB
+  error_asymptotic <- z_asymptotic-d_stable
+  error_convergent <- z_convergent- d_stable
+  data.frame(n=1:n, z_asymptotic=z_asymptotic, z_convergent=z_convergent,
+             error_asymptotic=error_asymptotic, error_convergent=error_convergent)
 }
 
 z_error_bound <- function(n, alpha, beta, x) {
@@ -64,11 +59,28 @@ z_error_bound <- function(n, alpha, beta, x) {
     x^(-1-alpha)*z_error_bound(n, 1/alpha, 1-(2-alpha)*(1+beta), x^(-alpha))
 }
 
-z_2_5_1 <- function(n, alpha, beta, x) {
+z_2_5_1 <- function(n, alpha, betaB, xB) {
+  # asymptotic series for x positive
   if (alpha < 1) {
+    # for xB small, beta != 1
     k <- 0:(n-1)
-    (1/(pi*alpha))*sum(gamma((k+1)/alpha)/gamma(k+1)*sin(pi/2*(k+1)*(1-beta))*x^k)
+    (1/(pi*alpha))*cumsum(gamma((k+1)/alpha)/gamma(k+1)*sin(pi/2*(k+1)*(1-betaB))*xB^k)
   } else {
-    x^(-1-alpha) * z_2_5_1(n, 1/alpha, 1-(2-alpha)*(1+beta), x^(-alpha))
+    # for x large, beta != -1
+    xB^(-1-alpha) * z_2_5_1(n, 1/alpha, 1-(2-alpha)*(1+betaB), xB^(-alpha))
+  }
+}
+
+z_2_4_6 <- function(n, alpha, betaB, xB) {
+  # convergent series for positive x
+  if (alpha < 1) {
+    # for x large
+    k<-1:n
+    theta<-betaB
+    rho<-(1+theta)/2
+    (1/pi)*cumsum((-1)^(k-1)*gamma(k*alpha+1)/gamma(k+1)*sin(pi*k*rho*alpha)*xB^(-k*alpha-1))
+  } else {
+    # alpha > 1 and x small,
+    xB^(-1-alpha) * z_2_4_6(n, 1/alpha, 1-(2-alpha)*(1+betaB), xB^-alpha)
   }
 }

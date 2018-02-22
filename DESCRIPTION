@@ -1,7 +1,7 @@
-Package: stablecpp
+Package: RcppStable
 Type: Package
 Title: Calculates the d, p, q, and r for the stable distribution using C++
-Version: 0.9.6
+Version: 0.9.7
 Date: 2018-1-13
 Author: Joseph Dunn, Diethelm Wuertz, Martin Maechler and Rmetrics core team members.
 Maintainer: "Joseph Dunn"<jldunn@verizon.net>

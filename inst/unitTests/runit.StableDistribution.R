@@ -46,17 +46,17 @@ if(do.stable.rUnitTest <- require("fBasics") &&
 {
     ## fBasics:  for  .distCheck()
     distCheck <- fBasics:::.distCheck
-    environment(distCheck) <- asNamespace("stablecpp")
-    ## and re-attach "stablecpp" as its contents is now masked by fBasics::dstable:
-    if((P <- "package:stablecpp") %in% search())
+    environment(distCheck) <- asNamespace("RcppStable")
+    ## and re-attach "RcppStable" as its contents is now masked by fBasics::dstable:
+    if((P <- "package:RcppStable") %in% search())
 	detach(P, character.only=TRUE)
-    stopifnot(require("stablecpp"),
-	      ## check that indeed we get stablecpp's functions, not fBasics:
-	      identical(dstable, stablecpp::dstable))
+    stopifnot(require("RcppStable"),
+	      ## check that indeed we get RcppStable's functions, not fBasics:
+	      identical(dstable, RcppStable::dstable))
 }
 source(system.file("test-tools-1.R", package = "Matrix"))
 					#-> identical3(), showProc.time(),...
-(doExtras <- stablecpp:::doExtras())
+(doExtras <- RcppStable:::doExtras())
 n.check <- if(doExtras) 1000 else 64
 
 test.stableS0 <- function(n = n.check)

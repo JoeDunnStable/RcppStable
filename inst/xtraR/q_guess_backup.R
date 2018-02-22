@@ -1,4 +1,4 @@
-require(stablecpp)
+require(RcppStable)
 require(ggplot2)
 
 ##Functor which contains an approximation for stable p as a function of p for

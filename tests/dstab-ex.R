@@ -1,8 +1,8 @@
-require("stablecpp")
+require("RcppStable")
 require("ggplot2")
 require("plyr")
 
-dPareto <- stablecpp:::dPareto
+dPareto <- RcppStable:::dPareto
 
 source(system.file("test-tools-1.R", package = "Matrix"), keep.source=interactive())
 					#-> identical3(), showProc.time(),...

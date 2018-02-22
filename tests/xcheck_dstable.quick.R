@@ -1,8 +1,8 @@
-require(stablecpp)
+require(RcppStable)
 require(reshape2)
 
 compare_dstable.quick<-function(alphas,betas) {
-  write("Comparing stablecpp::dstable to stablecpp::dstable.quick","")
+  write("Comparing RcppStable::dstable to RcppStable::dstable.quick","")
   n<-2000
   returnNA <-function(e) rep(NA,n)
   df_out<-data.frame()
@@ -10,9 +10,9 @@ compare_dstable.quick<-function(alphas,betas) {
   for (a in alphas) {
     write(a,"")
     for (b in betas) {
-      xs<-stablecpp::qstable((.5+0:1999)/2000,a,b,pm=0)
-      v_quick<-stablecpp::dstable.quick(xs,a,b,pm=0,log=T)
-      v_exact<-stablecpp::dstable(xs,a,b,pm=0,log=T)
+      xs<-RcppStable::qstable((.5+0:1999)/2000,a,b,pm=0)
+      v_quick<-RcppStable::dstable.quick(xs,a,b,pm=0,log=T)
+      v_exact<-RcppStable::dstable(xs,a,b,pm=0,log=T)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       x=xs,v_quick=v_quick,v_exact=v_exact))
       cat(sprintf("alpha = %6g, beta = %6g, loglik_quick = %20g, loglik_exact = %20g\n",

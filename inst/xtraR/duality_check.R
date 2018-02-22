@@ -1,4 +1,4 @@
-require(stablecpp)
+require(RcppStable)
 require(plyr)
 eps_diff<-function(l,r){
   stopifnot(length(r)==length(l))

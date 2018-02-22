@@ -1,5 +1,5 @@
 require(stabledist)
-require(stablecpp)
+require(RcppStable)
 require(reshape2)
 
 check_stableMode<-function(){
@@ -30,7 +30,7 @@ check_stableMode<-function(){
 
 
 compare_dstable<-function(xs,alphas,betas) {
-  write("Comparing stablecpp::dstable to stabledist::dstable","")
+  write("Comparing RcppStable::dstable to stabledist::dstable","")
   n<-length(xs)
   returnNA <-function(e) rep(NA,n)
   df_out<-data.frame()
@@ -38,7 +38,7 @@ compare_dstable<-function(xs,alphas,betas) {
   for (a in alphas) {
     write(a,"")
     for (b in betas) {
-      v_cpp<-tryCatch(stablecpp::dstable(xs,a,b,pm=0),error=returnNA)
+      v_cpp<-tryCatch(RcppStable::dstable(xs,a,b,pm=0),error=returnNA)
       v_r<-tryCatch(stabledist::dstable(xs,a,b,pm=0),error=returnNA)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       x=xs,v_cpp=v_cpp,v_r=v_r))
@@ -54,7 +54,7 @@ compare_dstable<-function(xs,alphas,betas) {
 }
 
 compare_pstable<-function(xs,alphas,betas) {
-  write("Comparing stablecpp::pstable to stabledist::pstable\n","")
+  write("Comparing RcppStable::pstable to stabledist::pstable\n","")
   n<-length(xs)
   returnNA <- function(e) rep(NA,n)
   df_out<-data.frame()
@@ -62,7 +62,7 @@ compare_pstable<-function(xs,alphas,betas) {
     for (a in alphas) {
     write(a,"")
     for (b in betas) {
-      v_cpp<-tryCatch(stablecpp::pstable(xs,a,b,pm=0),error=returnNA)
+      v_cpp<-tryCatch(RcppStable::pstable(xs,a,b,pm=0),error=returnNA)
       v_r<-tryCatch(stabledist::pstable(xs,a,b,pm=0),error=returnNA)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       x=xs,v_cpp=v_cpp,v_r=v_r))
@@ -79,7 +79,7 @@ compare_pstable<-function(xs,alphas,betas) {
 }
 
 compare_qstable<-function(ps,alphas,betas) {
-  write("Comparing stablecpp::qstable to stabledist::qstable\n","")
+  write("Comparing RcppStable::qstable to stabledist::qstable\n","")
   n<-length(ps)
   returnNA <- function(e) rep(NA,n)
   df_out<-data.frame()
@@ -87,7 +87,7 @@ compare_qstable<-function(ps,alphas,betas) {
   for (a in alphas) {
     print(a)
     for (b in betas) {
-      v_cpp<-tryCatch(stablecpp::qstable(ps,a,b,pm=0),error=returnNA)
+      v_cpp<-tryCatch(RcppStable::qstable(ps,a,b,pm=0),error=returnNA)
       v_r<-tryCatch(stabledist::qstable(ps,a,b,pm=0),error=returnNA)
       df_out<-rbind(df_out,data.frame(alpha=rep(a,n),beta=rep(b,n),
                                       p=ps,v_cpp=v_cpp,v_r=v_r))

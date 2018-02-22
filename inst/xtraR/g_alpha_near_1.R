@@ -1,5 +1,6 @@
 require(plyr)
 require(ggplot2)
+require(deSolve)
 
 eps_diff<-function(l,r){
   stopifnot(length(r)==length(l))
@@ -15,8 +16,8 @@ eps_diff<-function(l,r){
   round(out,1)
 }
 
-g_far_1 <- function(x, alpha, beta) {
-  # S0 parameterization
+g_far_1 <- function(x, alpha, beta, pm) {
+  n_steps<<-0
   df0<-expand.grid(x=x, alpha=alpha, beta=beta)
   g_df_1<- function(df0) {
     x<-df0$x
@@ -24,15 +25,42 @@ g_far_1 <- function(x, alpha, beta) {
     alpha_m_1 <- alpha - 1
     beta <- df0$beta
     pi2<-pi/2
-    tol<-8*.Machine$double.eps
+    tol<-16*.Machine$double.eps
+    g_th2_target<-1
+    # Calculate the targets for g in the default case where th2
+    # point where g * exp(-g) hits its maximum, exp(-1)
+    target_to_maximum<-c(1-2^(-6:-3),2^-3*(6:1),2^-3*4^(-1:-10))
+    target_g_exp_m_g<-target_to_maximum*exp(-1)
+    df_target<-data.frame(target_g_exp_m_g=target_g_exp_m_g)
+    bracket_hi<-c(1,1e9)
+    bracket_lo<-c(1e-9,1)
+    fun<-function(g, target_g_exp_m_g){g*exp(-g)-target_g_exp_m_g}
+    fun_hi<-function(df) {
+      data.frame(g_target=uniroot(fun,bracket_hi,df$target_g_exp_m_g,
+                                  tol=tol)$root)}
+    fun_lo<-function(df) {
+      data.frame(g_target=uniroot(fun,bracket_lo,df$target_g_exp_m_g,
+                                  tol=tol)$root)}
+    df_target_hi<-ddply(df_target,.(target_g_exp_m_g), fun_hi)
+    df_target_lo<-ddply(df_target,.(target_g_exp_m_g), fun_lo)
+    g_target<-sort(c(df_target_hi$g_target,1,df_target_lo$g_target))
 
     if (alpha_m_1 != 0) {
       zeta <- -beta*tan(pi2*alpha)
+      if (pm == 0) {
       x_m_zet <- abs(x-zeta)
       if (x < zeta) {
         x <- -x
         beta <- -beta
         zeta <- -zeta
+      }
+      } else {
+        x_m_zet <- abs(x)
+        if (x<0) {
+          x<--x
+          beta<--beta
+          zeta<--zeta
+        }
       }
       theta0<-atan(-zeta)/alpha
       cat0<-1/sqrt(1+zeta^2)
@@ -82,6 +110,15 @@ g_far_1 <- function(x, alpha, beta) {
           ret[sel]<-pow2*catt_m_t;
           ret
         } # g left
+        th2_guess<-x_m_zet*cat0^(1/alpha)*sin(-add_l)/alpha
+        d_lnth_d_lng<-function(ln_g, lnth, parms) {
+          n_steps<<-n_steps+1
+          th<-exp(lnth)
+          cot_th<-1/tan(th-add_l)
+          cot_alpha_th<-1/tan(alpha*th)
+          cot_alpha_m_1_th <- 1/tan((alpha-1)*th+add_l)
+          list(d_lnth=(1/th)*(alpha-1)/(cot_th-alpha^2*cot_alpha_th+(alpha-1)^2*cot_alpha_m_1_th))
+        }
       } else {
         type <- "right"
         g<-function(th_r) {
@@ -112,6 +149,15 @@ g_far_1 <- function(x, alpha, beta) {
           ret[sel]<- pow2*catt_m_t;
           ret
         } # g right
+        th2_guess <-sin(add_r)/cat0/x_m_zet^alpha
+        d_lnth_d_lng<-function(ln_g, lnth, parms) {
+          n_steps<<-n_steps+1
+          th<-exp(lnth)
+          cot_th <- 1/tan(th)
+          cot_alpha_th <- 1/tan(alpha*th+add_r)
+          cot_alpha_m_1_th <-1/tan((alpha-1)*th+add_r)
+          list(d_lnth=(1/th)*(alpha-1)/(cot_th-alpha^2*cot_alpha_th+(alpha-1)^2*cot_alpha_m_1_th))
+        }
       }
 
     } else {
@@ -132,37 +178,164 @@ g_far_1 <- function(x, alpha, beta) {
         ea <- -pi2*x/beta
         h <- pi2/beta + pi2 -th_r
         h_tanh <- h / tan(th_r)
+        if ((abs(th_r-th_max)<tol && beta==1) || (th_r==0 && beta==-1))
+           ln_g0 = ea - 1 - log(pi2)
+        else
+           ln_g0 = -Inf
         ln_h2b <- log(h * beta / pi2)
         ln_costh <- log(sin(th_r))
         residual <- 0
-        ln_g[i_g0] <- -Inf
+        ln_g[i_g0] <- ln_g0
         ln_g[i_g_inf] <- Inf
         sel<-!(i_g0 | i_g_inf)
         ln_g[sel]<-ea+h_tanh[sel]+ln_h2b[sel]-ln_costh[sel]+residual
         exp(ln_g)
       } #g right for alpha == 1
-    }
-    if (abs(th_max-th_min) > 4*.Machine$double.eps) {
-      g_low <- g(th_min)
-      g_hi <- g(th_max)
-      if (min(g_low,g_hi) < 1 && 1 < max(g_low,g_hi)) {
-        g2 <- function(th) { min(g(th),.Machine$double.xmax) - 1}
-        th2 <- uniroot(g2, c(th_min, th_max),tol=64*.Machine$double.eps)$root
-        th <-  sort(c(th_min+(0:400)/400 * (th_max-th_min),
-                      th_min+(50:100)/100*(th2-th_min),
-                      th2+(1:50)/100*min(th2-th_min,th_max-th2)))
+      if (x<1) {
+        th2_guess <- pi/2-atan(+x)
       } else {
-        th<-th_min +(0:500)/500*(th_max-th_min)
+        th2_guess<-atan(pi2*(1/beta+1)/(pi2*x/beta-log(1+beta)))
+        }
+      d_lnth_d_lng<-function(ln_g, lnth, parms) {
+        n_steps<<-n_steps+1
+        th<-exp(lnth)
+        denom1<- -1/(pi2/beta+pi2-th)
+        denom2<- -2/tan(th)
+        denom3<- -(pi2/beta+pi2-th)/(sin(th)^2)
+        list(d_lnth=(1/th)*1/(denom1+denom2+denom3))
       }
-    data.frame(th=th, type=type, g=g(th))
+    } # alpha = 1
+    if (!(alpha==1 && beta==0) && abs(th_max-th_min) > 4*.Machine$double.eps) {
+      g_low <- g(th_min)
+      if (is.nan(g_low)) {
+        cat(c(alpha, beta, x, th_min, g_low, "\n"))
+      }
+      g_hi <- g(th_max)
+      if (is.nan(g_hi)) {
+        cat(c(alpha, beta, x, th_max, g_hi, "\n"))
+      }
+      g2 <- function(th,value) { min(g(th),.Machine$double.xmax) - value}
+      if (is.nan(th2_guess) || th2_guess<= th_min || th2_guess >=th_max)
+        th2_guess = .5*(th_min+th_max)
+      if (min(g_low,g_hi) < 1 && 1 < max(g_low,g_hi)) {
+        g_th2_guess <- g(th2_guess)
+        if ((g_low < g_hi)==(g_th2_guess>1))
+          bracket<-c(th_min,th2_guess)
+        else
+          bracket<-c(th2_guess,th_max)
+        th2_ur <- uniroot(g2, bracket, value=1, tol=64*.Machine$double.eps*max(bracket))
+        th2<-th2_ur$root
+        g_th2<-th2_ur$f.root+1
+        iter<-th2_ur$iter
+        th_start<-th2
+        g_th_start<-g_th2
+        g_target<-g_target[g_target>min(g_low,g_hi)]
+      } else {
+        if (g_low < g_hi){
+          th2 = th_min
+          g_th2<-g_low
+
+        } else {
+          th2 = th_max
+          g_th2<-g_hi
+        }
+        # th2 is at an end point
+        # we need to recalculate g_target, since the maximum is now
+        # at the endpoint
+        th_start<-.8*th2+.1*(th_min+th_max)
+        g_th_start<-g(th_start)
+        g_exp_m_g_start<-g_th_start * exp(-g_th_start)
+        target_g_exp_m_g<-target_to_maximum*g_th2*exp(-g_th2)
+        target_g_exp_m_g<-target_g_exp_m_g[target_g_exp_m_g>.Machine$double.xmin]
+        df_target<-data.frame(target_g_exp_m_g=target_g_exp_m_g)
+        bracket_hi<-c(g_th2,1e9*g_th2)
+        df_target_hi<-ddply(df_target, .(target_g_exp_m_g), fun_hi)
+        g_target<-rle(sort(c(df_target_hi$g_target,g_th_start)))$values
+        g_target<-g_target[g_target>min(g_low,g_hi)]
+        iter<-0
+      }
+      g_map_via_ode<-function(g_target, th_start, g_th_start) {
+        g_target_plus<-g_target[g_target>g_th_start]
+        ln_g_target_plus<-log(c(g_th_start,g_target_plus))
+        g_target_minus<-g_target[ g_target<g_th_start]
+        ln_g_target_minus<-rev(log(c(g_target_minus,g_th_start)))
+        if (length(ln_g_target_plus)>1)
+          th_plus<-ode(log(th_start),ln_g_target_plus,d_lnth_d_lng)
+        else
+          th_plus<-matrix(c(ln_g_target_plus[1],log(th_start)),ncol=2)
+        if (length(ln_g_target_minus)>1)
+          th_minus<-ode(log(th_start),ln_g_target_minus, d_lnth_d_lng)
+        else
+          th_minus<-matrix(c(ln_g_target_minus[1],log(th_start)),ncol=2)
+        th<-exp(c(rev(th_minus[,2]),th_plus[,2][-1]))
+        g_th<-g(th)
+        df_out<-data.frame(g_target=c(g_target_minus, g_th_start, g_target_plus),
+                           th=th, g=g_th, iter=NA)
+      }
+      g_map_via_ur<-function(g_target, th_start, g_th_start) {
+        g_target_plus <- g_target[g_target>g_th_start]
+        g_target_minus <- g_target[g_target<g_th_start]
+        th_cur<-th_start
+        df_out<- data.frame(g_target=g_th_start,
+                            th=th_start, g=g_th_start,
+                            iter=iter)
+        for (g_tar in g_target_plus) {
+          if (g_low<g_hi)
+            bracket=c(th_cur, th_max)
+          else
+            bracket=c(th_min, th_cur)
+          th_ur<-uniroot(g2, bracket, g_tar, tol=64*.Machine$double.eps*max(bracket))
+          th_cur<-th_ur$root
+          df_out<-rbind(df_out,data.frame(g_target=g_tar, th=th_cur,
+                                          g=g_tar+th_ur$f.root,
+                                          iter=iter))
+        }
+        th_cur<-th_start
+        for (g_tar in rev(g_target_minus)) {
+          if (g_low<g_hi)
+            bracket=c(th_min, th_cur)
+          else
+            bracket=c(th_cur, th_max)
+          th_ur<-uniroot(g2, bracket, g_tar, tol=64*.Machine$double.eps*max(bracket))
+          th_cur<-th_ur$root
+          df_out<-rbind(df_out,data.frame(g_target=g_tar, th=th_cur,
+                                          g=g_tar+th_ur$f.root,
+                                          iter=th_ur$iter))
+        }
+        df_out
+      }
+      t1<-system.time(df_out1<-g_map_via_ode(g_target, th_start, g_th_start))
+#      t2<-system.time(df_out2<-g_map_via_ur(g_target, th_start, g_th_start))
+      cat("time via ode = ", t1
+#          , "\ntime via ur =  ",t2
+          , "\n")
+      df_out<-rbind(df_out1,data.frame(g_target=NA,
+                                      th=c(th_min, th_max),
+                                      g=c(g_low,g_hi),
+                                      iter=NA))
+      ord<-order(df_out$th)
+      df_out$type<-type
+      df_out<-df_out[ord,]
     } else {
-      data.frame()
+      df_out<-data.frame()
     }
+    df_out$exp_m_g <- exp(-df_out$g)
+    df_out$g_exp_m_g <- with(df_out,ifelse(exp_m_g==0,0,g * exp_m_g))
+    df_out$g_1_alpha_g_exp_g <- with(df_out,ifelse(exp_m_g==0,0,
+                                       g*(1-alpha*g)*exp_m_g))
+    if (length(df_out$th)>0){
+      df_out$err_bnd<-c(with(df_out, abs(diff(g_exp_m_g))*diff(th)),NA)
+      gph<-qplot(x=th, y=g_exp_m_g, data=df_out[df_out$g_exp_m_g>=1e-9*max(df_out$g_exp_m_g),],
+                 geom="point",
+                 main=paste("Pdf integrand for x = ",x,", alpha = ", alpha, ", beta = ", beta)
+                 )
+      print(gph)
+      }
+    else
+      df_out$err_bnd<-numeric()
+    df_out
   } # g_df_1
   df <- ddply(df0, .(x, alpha, beta), g_df_1)
-  df$exp_m_g <- exp(-df$g)
-  df$g_exp_m_g <- ifelse(df$exp_m_g==0,0,df$g * df$exp_m_g)
-  df$g_1_alpha_g_exp_g <- ifelse(df$exp_m_g==0,0,df$g*(1-df$alpha*df$g)*df$exp_m_g)
   df
 } # g for alpha far from 1
 
@@ -493,37 +666,37 @@ check_alpha_near_1 <- function(alpha_m_1, beta) {
   }
   check_one(df$alpha_m_1, df$beta)
 }
-tmp<-c(2^(-2-8*(6:0)),.5,1-2^(-2-8*(0:6)))
-alpha_m_1 <- c(-rev(tmp), tmp)
-beta <- (-4:4)/4
-df_chk<-check_alpha_near_1(alpha_m_1, beta)
+#tmp<-c(2^(-2-8*(6:0)),.5,1-2^(-2-8*(0:6)))
+#alpha_m_1 <- c(-rev(tmp), tmp)
+#beta <- (-4:4)/4
+#df_chk<-check_alpha_near_1(alpha_m_1, beta)
 
-tmp<-2^(-8*(6:2))
-alpha_m_1<-c(-rev(tmp),tmp)
-x <- -10
-beta<-.5
-df_1 <- g_alpha_near_1(x, alpha_m_1, beta)
-qplot(x=th, y=g_exp_m_g, data=df_1[df_1$g_exp_m_g>1e-9,],
-      color = as.factor(alpha_m_1), geom="line",
-      main="dstable(-10, alpha, .5)")
+#tmp<-2^(-8*(6:2))
+#alpha_m_1<-c(-rev(tmp),tmp)
+#x <- -10
+#beta<-.5
+#df_1 <- g_alpha_near_1(x, alpha_m_1, beta)
+#qplot(x=th, y=g_exp_m_g, data=df_1[df_1$g_exp_m_g>1e-9,],
+#      color = as.factor(alpha_m_1), geom="line",
+#      main="dstable(-10, alpha, .5)")
 
-x <- 10
-df_2 <- g_alpha_near_1(x, alpha_m_1, beta)
-qplot(x=th, y=g_exp_m_g, data=df_2[df_2$g_exp_m_g>1e-9,],
-      color = as.factor(alpha_m_1), geom="line",
-     main="dstable(10, alpha, .5)")
+#x <- 10
+#df_2 <- g_alpha_near_1(x, alpha_m_1, beta)
+#qplot(x=th, y=g_exp_m_g, data=df_2[df_2$g_exp_m_g>1e-9,],
+#      color = as.factor(alpha_m_1), geom="line",
+#     main="dstable(10, alpha, .5)")
 
-alpha <- 1+1/128
-beta <- 1
-x <--.1
+#alpha <- 1+1/128
+#beta <- 1
+#x <--.1
 
-df_3 <- g_far_1(x, alpha, beta)
-df_4<-g_mpfr(x,alpha,beta)
-df_5<-g_alpha_near_1(x, alpha-1, beta)
-err_far<-eps_diff(df_3$g,df_4$g)
-err_near<-eps_diff(df_5$g,df_4$g)
-list(near=sum(err_far>err_near),far=sum(err_near>err_far))
+#df_3 <- g_far_1(x, alpha, beta)
+#df_4<-g_mpfr(x,alpha,beta)
+#df_5<-g_alpha_near_1(x, alpha-1, beta)
+#err_far<-eps_diff(df_3$g,df_4$g)
+#err_near<-eps_diff(df_5$g,df_4$g)
+#list(near=sum(err_far>err_near),far=sum(err_near>err_far))
 
-qplot(x=th, y=g_exp_m_g, data=df_3[df_3$g_exp_m_g > 1e-9, ],
-      color = as.factor(alpha), geom="line",
-      main=paste("Integrand for dstable(x = ", x,", alpha, beta =", beta, ")"))
+#qplot(x=th, y=g_exp_m_g, data=df_3[df_3$g_exp_m_g > 1e-9, ],
+#      color = as.factor(alpha), geom="line",
+#      main=paste("Integrand for dstable(x = ", x,", alpha, beta =", beta, ")"))

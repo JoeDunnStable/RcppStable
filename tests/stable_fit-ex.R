@@ -13,8 +13,8 @@ graph_stable_fit<-function(l_in,subhead=""){
   df_label$label<-c(sprintf("%11s =%8.4f",label_var[1:5],df_label$value[1:5]),
                       sprintf("%11s =%8.0f",label_var[6:7],df_label$value[6:7]))
 
-  df_gph<-cbind(stablecpp:::stable_table,
-                ghp_value=with(stablecpp:::stable_table,ifelse(type=="q_skew", value,log(value))))
+  df_gph<-cbind(RcppStable:::stable_table,
+                ghp_value=with(RcppStable:::stable_table,ifelse(type=="q_skew", value,log(value))))
 
   type=ifelse(nrow(parameters)==2,"mle","q")
   if (type=="mle")
@@ -37,7 +37,7 @@ graph_stable_fit<-function(l_in,subhead=""){
 
 }
 
-require(stablecpp)
+require(RcppStable)
 
 alphas=c(.5,1,1.5,2)
 betas<-c(-1,-.5,0,.5,1)

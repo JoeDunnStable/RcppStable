@@ -1,4 +1,4 @@
-pkg <- "stablecpp"
+pkg <- "RcppStable"
 
 if(require("RUnit", quietly = TRUE))
 {
