@@ -4,7 +4,7 @@ Title: Calculates the d, p, q, and r for the stable distribution using C++
 Version: 0.9.7
 Date: 2018-1-13
 Author: Joseph Dunn, Diethelm Wuertz, Martin Maechler and Rmetrics core team members.
-Maintainer: "Joseph Dunn"<jldunn@verizon.net>
+Maintainer: "Joseph Dunn"<JoeDunn144@gmail.com>
 Depends: R (>= 3.1.0),  utils
 Imports: Rcpp (>= 0.12.14), RcppEigen (>= 0.3.3.3.1), stats, stats4
 LinkingTo: Rcpp, RcppEigen, BH
