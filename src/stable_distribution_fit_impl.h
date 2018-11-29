@@ -2,9 +2,10 @@
 /// Implementation of routines to fit stable distribution
 /// Included in stable_distribution_fit.h when LIBRARY is defined
 /// \author Joseph Dunn
-/// \copyright 2016, 2017 Joseph Dunn
+/// \copyright 2016, 2017, 2018 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
+#include "stable_config.h"
 #include "stable_distribution_fit.h"
 
 #include "stable_distribution_Vec.h"
@@ -20,6 +21,7 @@
 
 //#define BOOST_MATH_INSTRUMENT
 #include <boost/math/tools/toms748_solve.hpp>
+#include <boost/filesystem.hpp>
 
 #include "neldermeadsolver.h"
 #include "stable_distribution.h"
@@ -227,7 +229,7 @@ Vec DstableQuick<myFloat>::operator() (const Vec& x)
     for (n1=n0; n1<n-1 && xx(n1)<x_break_3; ++n1);
     Vec pt_x_low(n1-n0);
     Vec ln_dt_x_low(n1-n0);
-    for (unsigned int i = n0; i<n1; ++i) {
+    for (unsigned int i= n0; i<n1; ++i) {
       pt_x_low(i-n0) = mycdf(dist_t,xx(i));
       ln_dt_x_low(i-n0) = log(pdf(dist_t, xx(i)));
     }
@@ -699,7 +701,11 @@ template<typename myFloat>
 std::vector<FitResult<myFloat> > stable_fit(const Vec& yy, Controllers<myFloat> ctls, const myFloat dbltol,
                                   const string type,const bool quick, const int verbose) {
   int n=static_cast<int>(yy.size());
-  ofstream trace("../output/stable_fit_trace.txt");
+  string out_dir = string(OUT_DIR);
+  if (!boost::filesystem::is_directory(out_dir))
+    boost::filesystem::create_directory(out_dir);
+
+  ofstream trace(out_dir + "/stable_fit_trace.txt");
   
   // First McCulloch's method
   

@@ -11,7 +11,7 @@
 \concept{Stable Distribution}
 
 \description{
-    A collection and description of functions to compute
+    A collection of functions to compute
     density, distribution and quantile function and
     to generate random variates of the stable distribution.
 
@@ -54,19 +54,17 @@ rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
     \eqn{P[X \le x]} otherwise, \eqn{P[X > x]}.}
 
   \item{integ.tol}{positive number, the tolerance used for numerical
-    integration, see \code{\link{integrate}}.}
+    integration.}
   \item{tol}{numerical tolerance,
     \describe{
       \item{dstable(), pstable():}{used for numerical integration, see
-	\code{integ.tol} above.  Note that earlier versions had tighter
-	tolerances -- which seem too tight as default values.}
-      \item{qstable():}{used for rootfinding, see \code{\link{uniroot}}.}
+	          \code{integ.tol} above.}
+      \item{qstable():}{used for rootfinding.}
     }
   }
-  \item{subdivisions}{maximal number of intervals for integration, see
-    \code{\link{integrate}}.}
+  \item{subdivisions}{maximal number of intervals for integration.}
   \item{maxiter, trace}{maximal number of iterations and verboseness in
-    \code{\link{uniroot}}, see there.}
+    root finding.}
 }
 
 \value{
@@ -113,10 +111,6 @@ rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
     delta.  For this parametrization,
     \code{\link{stableMode}(alpha,beta)} is needed.
     \cr
-    \dQuote{S3} parameterization [pm=3]: an internal parameterization,
-    currently not available for these functions.  The scale is the same
-    as the \dQuote{S2} parameterization, the shift is
-    \eqn{-\beta*g(\alpha)}, where \eqn{g(\alpha)} is defined in Nolan(1999).
 }
 \section{Tail Behavior}{
   The asymptotic behavior for large \eqn{x}, aka \dQuote{tail behavior}
@@ -134,7 +128,7 @@ rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
   In the case \eqn{\beta = 1}, the distributions are \dQuote{maximally
     skewed to the right} or simply \dQuote{\emph{extremal} stable}
   (Zolotarev).  In that case, the package \pkg{FMStable} provides
-  \code{dpq*} functions which are faster and more accurate than ours (if
+  \code{dpq*} functions which are faster and as accurate as ours (if
   accuracy higher than about 6 digits is needed), see,
   \code{\link[FMStable]{pEstable}}.
 
@@ -142,12 +136,7 @@ rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
   e.g., meaning distance \eqn{d < 0.01}), the computations typically are
   numerically considerably more challenging, and the results may not be
   accurate.
-  \cr
-  As we % currently (2011-03-28)
-  plan to improve on this, \emph{and}
-  as it is unknown when exactly the numerical difficulties arise, we
-  currently only do warn here (in the documentation), but \emph{not} by
-  giving explicit \code{\link{warning}()}s.
+
 }
 \seealso{
   the \code{\link[fBasics]{stableSlider}()} function from package
@@ -157,7 +146,7 @@ rstable(n, alpha, beta, gamma = 1, delta = 0, pm = 0)
 \author{
   Diethelm Wuertz for the original Rmetrics \R-port.
   Many numerical improvements by Martin Maechler,
-  Translation to C++ by Joseph Dunn.
+  Translation to C++ and many numerical improvements by Joseph Dunn.
 }
 
 \references{

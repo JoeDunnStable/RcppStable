@@ -17,7 +17,10 @@ using std::ofstream;
 
 #include <cmath>
 #include <Eigen/Dense>
+#include <boost/filesystem.hpp>
 #include "Problem.h"
+#include "stable_config.h"
+
 
 
 namespace cppoptlib {
@@ -72,7 +75,11 @@ public:
 
     const size_t DIM = x.rows();
       
-    ofstream trace("../output/nm_trace.txt");
+    string out_dir = string(OUT_DIR);
+    if (!boost::filesystem::is_directory(out_dir))
+      boost::filesystem::create_directory(out_dir);
+
+    ofstream trace(out_dir + "/nm_trace.txt");
 
     // create initial simplex
     Matrix<T> x0 = Matrix<T>::Zero(DIM, DIM + 1);
@@ -111,7 +118,7 @@ public:
         if (tmp1 > max1)
           max1 = tmp1;
 
-          T tmp2 = (x0.col(index[i]) - x0.col(index[0]) ).template lpNorm<Eigen::Infinity>();
+        T tmp2 = (x0.col(index[i]) - x0.col(index[0]) ).template lpNorm<Eigen::Infinity>();
         if (tmp2 > max2)
           max2 = tmp2;
       }

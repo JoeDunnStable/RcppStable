@@ -2,7 +2,7 @@
 /// Implementation of the classes declared in adaptive_integration.h
 /// Included in adaptive_integration.h when LIBRARY is defined.
 /// \author Joseph Dunn
-/// \copyright 2016, 2017 Joseph Dunn
+/// \copyright 2016, 2017, 2018 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
 #include <limits>
@@ -834,6 +834,7 @@ void IntegrationController<myFloat>::integrate(F& f,
   
   template<typename myFloat, typename F>
   myFloat Integral<myFloat, F>::operator() () {
+    Fmt<myFloat> fmt;
     
     if (verbose==4){
       cout << endl
@@ -851,13 +852,13 @@ void IntegrationController<myFloat>::integrate(F& f,
       
       if (termination_code > 0)
         cout << msg() << ":" << endl;
-      cout << "Integral from " << points.front()
-      << " to " << points.back()
-      << " = " << result
-      << ", with absolute error = " << abserr << endl
+      cout << "Integral from " << fmt << points.front()
+      << " to " << fmt << points.back()
+      << " = " << fmt << result
+      << ", with absolute error = " << fmt << abserr << endl
       << "Number of evaluations = " << neval
       << ", subintervals = " << last << endl
-      << "rsum = " << rsum << ", esum = " << esum << endl;
+      << "rsum = " << fmt << rsum << ", esum = " << fmt << esum << endl;
       print_subs_summary(cout, controller.subs, last, points);
     }
     if (verbose>=4){

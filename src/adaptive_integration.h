@@ -2,7 +2,7 @@
 /// \file  adaptive_integration.h
 /// Routines for adapative integration ala QUADPACK
 /// \author Joseph Dunn
-/// \copyright 2016, 2017 Joseph Dunn
+/// \copyright 2016, 2017, 2018 Joseph Dunn
 /// \copyright Distributed under the terms of the GNU General Public License version 3
 
 #ifndef adaptive_integration_h
@@ -117,7 +117,7 @@ namespace adaptive_integration {
   /// \author de doncker,elise, appl. math & progr. div. - k.u.leuven
   ///
   template<typename myFloat>
-  class IntegrationController {
+  class STABLE_EXP IntegrationController {
   private:
     bool  noext;               ///< flag indicating no extrapolation is to be used.
     Kronrod<myFloat> g_k;      ///< the number of Gauss nodes
@@ -128,7 +128,7 @@ namespace adaptive_integration {
     /// constructor for integration controller.  Nodes and weights are input
     template<typename BigFloat>
     IntegrationController(bool noext,       ///< flag indicating no extrapolation is to used
-                          Kronrod<BigFloat> g_k_big, ///< A higher precision class of nodes & weights
+                          const Kronrod<BigFloat>& g_k_big, ///< A higher precision class of nodes & weights
                           myFloat epsabs,   ///< the target absolute error
                           myFloat epsrel,   ///< the target relative error
                           int limit,        ///< the maximum number of subintervals

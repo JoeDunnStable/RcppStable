@@ -6,8 +6,9 @@
   density function in the "0" parametrization, i.e., the maximum \eqn{x_0} of
   \code{\link{dstable}(x, alpha, beta, gamma = 1, delta = 0, pm = 0)}.
 
-  Finds the maximum of \code{\link{dstable}} numerically, using
-  \code{\link{optimize}}.
+  Finds the maximum of \code{\link{dstable}} numerically, using an 
+  optimization routine without derivatives.
+  
 }
 \usage{
 stableMode(alpha, beta,
