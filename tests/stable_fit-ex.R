@@ -39,8 +39,8 @@ graph_stable_fit<-function(l_in,subhead=""){
 
 require(RcppStable)
 
-alphas=c(.5,1,1.5,2)
-betas<-c(-1,-.5,0,.5,1)
+alphas=c(1.5)
+betas<-c(0,.5)
 for (alpha in alphas){
   for (beta in betas){
     print(c(alpha,beta))
