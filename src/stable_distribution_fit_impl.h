@@ -718,7 +718,7 @@ std::vector<FitResult<myFloat> > stable_fit(const Vec& yy, Controllers<myFloat> 
   if (!is_directory(out_dir))
     create_directory(out_dir);
   
-  ofstream trace(out_dir + "/nm_trace.txt");
+  ofstream trace(out_dir + "/stable_fit_trace.txt");
 #endif
 
   // First McCulloch's method
