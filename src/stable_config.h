@@ -3,9 +3,9 @@
 #define STABLE_CONFIG_H
 
 #define PACKAGE_NAME "Stable Distribution"
-#define PACKAGE_VERSION "1.2.4"
+#define PACKAGE_VERSION "1.2.5"
 #define PACKAGE_COMPILER "clang"
 #define PACKAGE_OS "darwin"
-#define OUT_DIR "../output-darwin-clang-1.2.4"
+#define OUT_DIR "../output-darwin-clang-1.2.5"
 
 #endif // STABLE_CONFIG_H
